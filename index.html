@@ -1,0 +1,1965 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Defend your roof from a door-to-door solar salesman. A week of sprinklers, chihuahuas and fate cards on Sunny Lane.">
+<meta name="theme-color" content="#141c33">
+<title>Solar Salesman</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23ffc531' stroke='%23151a2c' stroke-width='2'/%3E%3Crect x='9' y='13' width='14' height='4' fill='%23151a2c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one arcade-cabinet column — HUD strip, pixel stage (2:3), gadget buttons in a 2-up grid. Single committed night-arcade look. */
+:root {
+  --night: #141c33;
+  --panel: #1f2b4f;
+  --rim: #2e3f70;
+  --ink: #f3f5ff;
+  --muted: #a7b2d4;
+  --sun: #ffc531;
+  --water: #6cc6ff;
+  --tan: #e3b36a;
+  --leaf: #9be36a;
+  --steel: #c9ced8;
+  --good: #4fd17a;
+  --bad: #ff5a5f;
+  --paper: #fffef8;
+  --paper-ink: #151a2c;
+  --display: "Silkscreen", "Courier New", monospace;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+.cabinet {
+  --chrome: 230px;
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  touch-action: manipulation;
+}
+.hud {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px 12px;
+  align-items: center;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 8px 10px 8px 12px;
+}
+.clock { font-family: var(--display); font-size: 18px; color: var(--sun); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.clock small { font-size: 12px; color: var(--muted); margin-right: 6px; }
+.score { text-align: right; font-size: 12px; color: var(--muted); }
+.score b { display: block; font-family: var(--display); font-size: 18px; color: var(--ink); font-weight: 400; font-variant-numeric: tabular-nums; }
+.meter-row { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.meter-row span { font-family: var(--display); letter-spacing: .04em; text-transform: uppercase; font-size: 10px; white-space: nowrap; }
+.meter { flex: 1; height: 10px; background: var(--night); border-radius: 5px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--good); transition: width .3s, background .3s; }
+.meter.warn i { background: var(--sun); }
+.meter.hot i { background: var(--bad); }
+.snd {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 10px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.stage {
+  position: relative;
+  width: min(100%, 420px, calc((100vh - var(--chrome)) * .6667));
+  width: min(100%, 420px, calc((100dvh - var(--chrome)) * .6667));
+  min-width: 240px;
+  max-width: 100%;
+  aspect-ratio: 2 / 3;
+  margin-inline: auto;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px var(--rim), 0 10px 30px rgba(0,0,0,.45);
+}
+#game { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+
+.bubble {
+  position: absolute;
+  max-width: 62%;
+  transform: translate(-50%, -100%);
+  background: var(--paper);
+  color: var(--paper-ink);
+  border: 2px solid var(--paper-ink);
+  border-radius: 10px;
+  padding: 5px 8px;
+  font-size: clamp(11px, 3.2vw, 13px);
+  line-height: 1.25;
+  font-weight: 700;
+  pointer-events: none;
+  text-align: center;
+}
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%; bottom: -8px;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-top-color: var(--paper-ink);
+  border-bottom: 0;
+}
+.floats { position: absolute; inset: 0; pointer-events: none; }
+.float {
+  position: absolute;
+  transform: translate(-50%, 0);
+  font-family: var(--display);
+  font-size: 13px;
+  color: var(--sun);
+  text-shadow: 2px 0 var(--paper-ink), -2px 0 var(--paper-ink), 0 2px var(--paper-ink), 0 -2px var(--paper-ink);
+  white-space: nowrap;
+  animation: rise 1.1s ease-out forwards;
+}
+.float.water { color: var(--water); }
+.float.dog { color: var(--tan); }
+.float.leaf { color: var(--leaf); }
+.float.steel { color: var(--paper); }
+.float.fine { color: var(--bad); font-size: 12px; }
+.float.flood { color: #fff3a6; }
+.float.hoa, .float.guest { color: #e5b8ff; font-size: 10px; font-family: var(--body); font-weight: 700; }
+.float.miss { color: var(--muted); font-size: 11px; }
+@keyframes rise { from { opacity: 1; translate: 0 0; } to { opacity: 0; translate: 0 -28px; } }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(12, 17, 34, .9);
+}
+.title-screen { align-items: center; text-align: center; }
+/* auto-margin spacers center short content but let tall content scroll from the top */
+.title-screen::before, .title-screen::after, .end-screen::before, .end-screen::after { content: ""; margin-block: auto; }
+.title-screen h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(24px, 8vw, 34px);
+  line-height: 1;
+  margin: 0;
+  color: var(--sun);
+  text-wrap: balance;
+  text-shadow: 3px 3px 0 #b5531f;
+}
+.eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.howto { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.35; max-width: 32ch; text-align: left; }
+.howto li { padding-left: 16px; position: relative; }
+.howto li::before { content: ""; position: absolute; left: 0; top: .45em; width: 7px; height: 7px; background: var(--sun); }
+.howto li.new::before { background: var(--leaf); }
+.portrait { image-rendering: pixelated; }
+.title-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.day-pick { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.day-pick button {
+  font-family: var(--display);
+  font-size: 11px;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 9px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+}
+.day-pick button[aria-pressed="true"] { background: var(--sun); color: var(--paper-ink); }
+
+.btn {
+  font-family: var(--display);
+  font-size: 15px;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 20px;
+  background: var(--sun);
+  color: var(--paper-ink);
+  box-shadow: 0 4px 0 #b37d00;
+  cursor: pointer;
+}
+.btn:active { translate: 0 2px; box-shadow: 0 2px 0 #b37d00; }
+.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--rim); }
+.btn:focus-visible, .card:focus-visible, .gadget:focus-visible, .snd:focus-visible, .day-pick button:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
+
+.door-top { display: flex; gap: 10px; align-items: flex-start; }
+.door-top canvas { flex: none; width: 56px; height: 68px; }
+.door-say {
+  flex: 1;
+  min-width: 0;
+  background: var(--paper);
+  color: var(--paper-ink);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.3;
+  position: relative;
+}
+.door-say::before {
+  content: "";
+  position: absolute;
+  left: -7px; top: 14px;
+  border: 7px solid transparent;
+  border-right-color: var(--paper);
+  border-left: 0;
+}
+.door-label { font-family: var(--display); font-size: 11px; color: var(--muted); letter-spacing: .06em; margin: 0; display: flex; justify-content: space-between; }
+.timer { height: 6px; background: var(--panel); border-radius: 3px; overflow: hidden; }
+.timer i { display: block; height: 100%; background: var(--sun); width: 100%; }
+.cards { display: flex; flex-direction: column; gap: 8px; }
+.card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  background: var(--paper);
+  color: var(--paper-ink);
+  border: 3px solid var(--paper-ink);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  box-shadow: 0 4px 0 #070a14;
+  cursor: pointer;
+}
+.card:active { translate: 0 2px; box-shadow: 0 2px 0 #070a14; }
+.card:disabled { opacity: .45; cursor: default; }
+.card.picked { opacity: 1; outline: 3px solid var(--sun); }
+.chip {
+  flex: none;
+  font-family: var(--display);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--paper-ink);
+}
+.risk-low .chip { background: #a6e8bb; }
+.risk-med .chip { background: #ffe08a; }
+.risk-high .chip { background: #ffb38a; }
+.risk-doom .chip { background: var(--bad); color: var(--paper); }
+.result { margin: 0; font-size: 14px; line-height: 1.35; padding: 8px 10px; border-radius: 8px; border-left: 4px solid; background: var(--panel); }
+.result.good { border-color: var(--good); }
+.result.bad { border-color: var(--bad); }
+.result b { font-family: var(--display); font-weight: 400; font-size: 12px; display: block; margin-top: 4px; }
+.result.good b { color: var(--good); }
+.result.bad b { color: var(--bad); }
+
+
+.end-screen h2 { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 6vw, 26px); line-height: 1.1; margin: 0; color: var(--sun); text-wrap: balance; }
+.end-screen p { margin: 0; line-height: 1.4; max-width: 40ch; }
+.stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-size: 14px; background: var(--panel); padding: 10px 12px; border-radius: 8px; }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; font-family: var(--display); font-variant-numeric: tabular-nums; text-align: right; }
+.contract { background: var(--paper); color: var(--paper-ink); border-radius: 4px; padding: 10px 12px; font-size: 13px; transform: rotate(-1.5deg); }
+.contract-head { font-family: var(--display); font-size: 12px; border-bottom: 2px solid var(--paper-ink); padding-bottom: 4px; margin-bottom: 6px; }
+.contract dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; }
+.contract dt { color: #5a6075; }
+.contract dd { margin: 0; font-weight: 700; }
+.contract .sig { font-style: italic; font-size: 16px; color: #1c3fa8; }
+.end-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.brag { width: 100%; font: inherit; font-size: 13px; padding: 8px; border-radius: 6px; border: 1px solid var(--rim); background: var(--night); color: var(--ink); }
+.teaser { font-size: 13px; color: var(--muted); }
+
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.controls > .gadget:only-of-type,
+.controls > .gadget.last-odd { grid-column: 1 / -1; }
+.gadget {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 8px;
+  font-family: var(--display);
+  font-size: 16px;
+  letter-spacing: .03em;
+  color: var(--paper-ink);
+  background: var(--base);
+  box-shadow: 0 4px 0 var(--edge);
+  cursor: pointer;
+  --charge: 1;
+  --base: #2d5f86;
+  --fill: var(--water);
+  --edge: #0c2236;
+}
+.gadget.dog { --base: #6e512a; --fill: var(--tan); --edge: #33240f; }
+.gadget.blower { --base: #3d6b2a; --fill: var(--leaf); --edge: #19300f; }
+.gadget.garage { --base: #545a66; --fill: var(--steel); --edge: #22252b; }
+.gadget.flood { --base: #6f6220; --fill: #fff3a6; --edge: #2e280b; }
+.gadget::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--fill);
+  transform-origin: left;
+  transform: scaleX(var(--charge));
+}
+.gadget span { position: relative; }
+.gadget small { position: relative; display: block; font-family: var(--body); font-size: 11px; font-weight: 700; letter-spacing: 0; opacity: .85; }
+.gadget:active { translate: 0 2px; box-shadow: 0 2px 0 var(--edge); }
+.gadget.cooling { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .float { animation-duration: .6s; }
+  @keyframes rise { from { opacity: 1; } to { opacity: 0; } }
+}
+</style>
+
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+</style>
+</head>
+<body>
+<main class="cabinet" id="cabinet">
+  <header class="hud">
+    <div class="clock"><small id="dayTag">MON</small><span id="clock">9:00 AM</span></div>
+    <div class="score">Dignity removed<b id="score">0</b></div>
+    <button class="snd" id="sndBtn" type="button" aria-pressed="true">Sound<br>on</button>
+    <div class="meter-row">
+      <span>Temptation</span>
+      <div class="meter" id="meter" role="meter" aria-label="Temptation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="meterFill"></i></div>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="160" height="240" aria-label="Your front yard on Sunny Lane"></canvas>
+    <div class="bubble" id="bubble" hidden></div>
+    <div class="floats" id="floats"></div>
+
+    <section class="overlay title-screen" id="titleScreen">
+      <p class="eyebrow" id="titleEyebrow">Day 1 · Monday on Sunny Lane</p>
+      <h1>Solar Salesman</h1>
+      <canvas class="portrait" id="titlePortrait" width="70" height="110" style="width:70px;height:110px"></canvas>
+      <ul class="howto" id="howto"></ul>
+      <div class="title-actions">
+        <button class="btn" id="startBtn" type="button">Start Monday</button>
+      </div>
+      <div class="day-pick" id="dayPick" aria-label="Choose a day"></div>
+    </section>
+
+    <section class="overlay" id="doorScreen" hidden aria-live="polite">
+      <p class="door-label"><span>Ding dong.</span><span id="handNo">Pitch 1</span></p>
+      <div class="door-top">
+        <canvas id="doorPortrait" width="56" height="68"></canvas>
+        <div class="door-say" id="doorSay"></div>
+      </div>
+      <div class="timer"><i id="doorTimer"></i></div>
+      <div class="cards" id="cards"></div>
+      <p class="result" id="result" hidden></p>
+    </section>
+
+    <section class="overlay end-screen" id="endScreen" hidden>
+      <p class="eyebrow" id="endEyebrow">Monday · 5:00 PM</p>
+      <h2 id="endTitle"></h2>
+      <p id="endText"></p>
+      <div class="contract" id="contract" hidden>
+        <div class="contract-head">Residential Solar Lease</div>
+        <dl>
+          <dt>Term</dt><dd>300 months</dd>
+          <dt>Escalator</dt><dd>2.9% per year</dd>
+          <dt>Signed</dt><dd class="sig">You, apparently</dd>
+        </dl>
+      </div>
+      <dl class="stats" id="stats"></dl>
+      <div class="end-actions">
+        <button class="btn" id="nextBtn" type="button" hidden>Start Tuesday</button>
+        <button class="btn" id="againBtn" type="button">Play again</button>
+        <button class="btn ghost" id="bragBtn" type="button">Copy brag</button>
+      </div>
+      <input class="brag" id="bragText" type="text" readonly hidden aria-label="Brag text to copy">
+      <p class="teaser" id="teaser"></p>
+    </section>
+  </div>
+
+  <div class="controls" id="controls">
+    <button class="gadget" id="fireBtn" type="button"><span>Sprinkler</span><small id="fireHint">Ready</small></button>
+    <button class="gadget dog" id="dogBtn" type="button" hidden><span>Dog</span><small id="dogHint">Ready</small></button>
+    <button class="gadget blower" id="blowBtn" type="button" hidden><span>Blower</span><small id="blowHint">Gas 3/3</small></button>
+    <button class="gadget garage" id="garageBtn" type="button" hidden><span>Garage</span><small id="garageHint">Ready</small></button>
+    <button class="gadget flood" id="floodBtn" type="button" hidden><span>Floodlight</span><small id="floodHint">Ready</small></button>
+  </div>
+</main>
+
+<script>
+(() => {
+  const W = 160, H = 240, DAY_LEN = 45, DOOR_Y = 192, PATH_X = 80, DRIVE_X = 137;
+  const COOL = 4.5, SPRAY = 0.6, SLIP = 0.6;
+  const HOP_AT = 82, HOP_TO = 122, HOP_T = 0.7, CROUCH_T = 0.3;
+  const DOG_COOL = 12, DOG_HOME = { x: 58, y: 207 }, MAILBOX = { x: 58, y: 36 }, GRILL = { x: 30, y: 150 };
+  const BLOW_COOL = 1.6, BLOW_GAS = 3, GAS_PRICE = 200;
+  const GARAGE_COOL = 7, GARAGE_ZONE = 128;
+  const FLOOD_COOL = 10, DAZE_T = 2.4;
+  const BOSS_HP = 12;
+  const $ = id => document.getElementById(id);
+  const cv = $('game'), ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const lastPick = new Map();
+  function pick(arr) {
+    let v, tries = 0;
+    do { v = arr[Math.floor(Math.random() * arr.length)]; } while (arr.length > 1 && v === lastPick.get(arr) && ++tries < 6);
+    lastPick.set(arr, v);
+    return v;
+  }
+  // the dark wet patch on the lawn
+  const inWet = (x, y) => ((x - 90) / 34) ** 2 + ((y - 100) / 46) ** 2 <= 1;
+
+  // ---------- Days ----------
+  const DAYS = {
+    1: {
+      name: 'Monday', tag: 'MON', speed: 11, reps: [['gary', 0]], star: 'gary',
+      howto: [
+        'Gary is coming up your walk. He has a clipboard and no shame.',
+        'Tap <b>Sprinkler</b> when he\'s in the dark wet patch on the lawn.',
+        'If he reaches your door, pick a card within 5 seconds.',
+        'Hold out until 5:00 PM. Don\'t sign anything.'
+      ],
+      intro: 'Hi there! Got a minute? Or twenty-five years?',
+      win: ['Monday survived', '5:00 PM. Gary goes home to blow-dry his clipboard. Your roof remains gloriously un-paneled.'],
+      redemption: ['Gary found his calling', 'Gary quit solar and signed up for a pottery class. You changed a life. Bonus ending unlocked.']
+    },
+    2: {
+      name: 'Tuesday', tag: 'TUE', speed: 12, reps: [['gary', 0]], star: 'gary',
+      howto: [
+        'Gary watched parkour videos all night. He now <b>hops over the middle</b> of the wet patch.',
+        'Watch for the crouch. Soak him right before he jumps or right after he lands.',
+        { cls: 'new', html: 'New: <b>Pickles</b> the chihuahua. Tap <b>Dog</b> to chase Gary back to the mailbox.' },
+        { cls: 'new', html: 'Pickles will stop for a sandwich. Sometimes Gary brings one.' }
+      ],
+      intro: "I'm baaack! I've been training.",
+      win: ['Tuesday survived', "Gary's parkour career ends in your azaleas. Pickles keeps his tie as a trophy."],
+      redemption: ['Gary quit. Again.', 'Pottery class was full, but your lemonade got through to him. He is going to be a dog groomer. Pickles approves.']
+    },
+    3: {
+      name: 'Wednesday', tag: 'WED', speed: 12.5, reps: [['gary', 0]], star: 'gary',
+      howto: [
+        'Gary made a <b>GO SOLAR!</b> poster board. It blocks the sprinkler.',
+        { cls: 'new', html: 'New: <b>Leaf blower</b>. Blast the poster away, then soak him.' },
+        { cls: 'new', html: 'The blower holds 3 blasts. More gas costs 200 dignity.' },
+        'He still hops. Pickles still bites.'
+      ],
+      intro: 'Laminated poster board. Your move, garden hose.',
+      win: ['Wednesday survived', "Gary's poster is stuck in the neighbor's tree. It now reads GO SOL. The AR blew away."],
+      redemption: ['Gary quit. For real this time?', 'He is opening a lemonade stand. He asked for your recipe and a cut of the sprinkler money.']
+    },
+    4: {
+      name: 'Thursday', tag: 'THU', speed: 13, reps: [['gary', 0]], star: 'gary', hoa: true,
+      howto: [
+        '<b>Mrs. Pemberton</b>, HOA president, is inspecting lawns. Soak her and you get fined.',
+        'Gary sometimes sneaks up the <b>driveway</b>, where the sprinkler can\'t reach.',
+        { cls: 'new', html: 'New: <b>Garage door</b>. Open it as he passes and he trips into the recycling.' },
+        'Poster, hops and Pickles all still apply.'
+      ],
+      intro: 'Thursday! I found a shortcut.',
+      win: ['Thursday survived', 'Gary is still picking cans out of his pockets. Mrs. Pemberton wrote him up for loitering.'],
+      redemption: ['Gary quit and joined the HOA', 'He is running for treasurer. Mrs. Pemberton is very worried.']
+    },
+    5: {
+      name: 'Friday', tag: 'FRI', speed: 13, reps: [['gary', 0], ['brayden', 7]], star: 'brayden',
+      howto: [
+        'Gary brought a trainee, <b>Brayden</b>. Two salesmen at once.',
+        'Brayden can\'t hop and has no poster. He makes up for it with enthusiasm.',
+        'Pickles and the blower go after whoever is closest to your door.',
+        { cls: 'new', html: 'New: <b>Floodlight</b>. Dazzles everyone on the lawn for a few seconds. Yes, even at 2 PM.' }
+      ],
+      intro: 'Brayden is on his way. Watch and learn, kid.',
+      win: ['Friday survived', 'Brayden quit at 4:55 PM. He is going back to school for marine biology. Gary is taking it hard.'],
+      redemption: ['Gary quit. Brayden too.', 'They are starting a podcast about leaving sales. Episode one is about your lemonade.']
+    },
+    6: {
+      name: 'Saturday', tag: 'SAT', speed: 13, reps: [['gary', 0]], star: 'gary', guests: true,
+      howto: [
+        'It\'s your barbecue. <b>Guests</b> are standing around the lawn. Don\'t soak them.',
+        'Brayden quit, so Gary is back to working alone. He is not handling it well.',
+        'Pickles may stop at the grill for a hot dog.',
+        { cls: 'new', html: 'New fate cards: burgers, grill duty and Uncle Rick.' }
+      ],
+      intro: 'Is that a barbecue? I LOVE a captive audience.',
+      win: ['Saturday survived', 'Gary left with a paper plate of potato salad and zero signatures. Your guests are still talking about it.'],
+      redemption: ['Gary quit at your barbecue', 'He is now dating your cousin. Neither of them has solar.']
+    },
+    7: {
+      name: 'Sunday', tag: 'SUN', speed: 8, reps: [['boss', 0]], star: 'boss', boss: true,
+      howto: [
+        'The <b>Regional Manager</b> is here. He is wearing an inflatable sun costume.',
+        'Every hit lets air out. Deflate him all the way to win early.',
+        'He\'s slow, but at the door his pitches are harder to resist.',
+        'Everything is unlocked. There are three ways the week can end.'
+      ],
+      intro: "Gary's numbers are down. I'm here to close.",
+      win: ['Week survived', ''],
+      redemption: ['Week survived', '']
+    }
+  };
+  const LAST_DAY = 7;
+  const TEASERS = {
+    1: 'Tuesday: Gary has been watching parkour videos.',
+    2: 'Wednesday: Gary has a poster board and a laminator.',
+    3: 'Thursday: the HOA president is doing lawn inspections.',
+    4: 'Friday: Gary brings a trainee. Two salesmen at once.',
+    5: 'Saturday: your barbecue. Gary was not invited.',
+    6: 'Sunday: the Regional Manager. He is wearing a sun.'
+  };
+  const WEEK_ENDINGS = {
+    standard: ['Week survived', 'The Regional Manager was last seen floating toward the next county. Gary transferred to another state, where the sun is somebody else\'s problem. Your roof is still yours.'],
+    secret: ['Secret ending: The new neighbor', 'Monday morning, a moving truck pulls up next door. It\'s Gary. He bought the house. It has no solar panels. He waves. Pickles growls.'],
+    redemption: ['Redemption ending', 'The Regional Manager takes off the sun costume and cries. He and Gary quit together and open a lemonade stand on the corner. Pickles is head of security.']
+  };
+  const ENDING_NAMES = { standard: 'Standard', secret: 'Secret', redemption: 'Redemption' };
+
+  let unlocked = 1, endingsFound = [];
+  try { unlocked = Math.min(LAST_DAY, Math.max(1, Number(localStorage.getItem('solar-salesman-unlocked')) || 1)); } catch (e) {}
+  try { endingsFound = JSON.parse(localStorage.getItem('solar-salesman-endings') || '[]'); if (!Array.isArray(endingsFound)) endingsFound = []; } catch (e) {}
+  function unlock(d) {
+    if (d <= unlocked || d > LAST_DAY) return;
+    unlocked = d;
+    try { localStorage.setItem('solar-salesman-unlocked', String(d)); } catch (e) {}
+  }
+  function foundEnding(k) {
+    if (!endingsFound.includes(k)) endingsFound.push(k);
+    try { localStorage.setItem('solar-salesman-endings', JSON.stringify(endingsFound)); } catch (e) {}
+  }
+
+  // ---------- Lines ----------
+  const L = {
+    gary: {
+      walk: [
+        'Quick question: do you enjoy... the sun?',
+        'We were in the area with your energy provider.',
+        'Just doing free energy assessments!',
+        'Doug next door went solar. DOUG.',
+        'Your power company is laughing at you.',
+        "I'm not selling anything! Yet!",
+        "I'm not a salesman. I'm an energy consultant.",
+        'One more sale and I get to keep my car.',
+        'Love the lawn. Know what else loves sun?',
+        'Five minutes. Ten, tops. Forty-five max.',
+        'Your utility bill called. It misses you.'
+      ],
+      hit: [
+        'Whoa, I can take a hint! Or can I?',
+        'My clipboard!',
+        "That's a great use of water!",
+        'Have you heard of solar pumps?',
+        "I'm not crying. It's sprinkler.",
+        'This shirt was dry clean only!',
+        "I'll just air dry. In the SUN. See?",
+        'Is that reclaimed water?'
+      ],
+      ret: [
+        'Whoa, I can take a hint! Or can I?',
+        "I'm back! We got cut off.",
+        'Forgot to mention: zero down!',
+        'Okay. New approach.',
+        "My manager says I can't leave.",
+        'We were still in the area. Still.'
+      ],
+      door: [
+        "Hi! I couldn't help noticing your roof is just sitting there.",
+        'We were in the area with your energy provider. Mind if I come in?',
+        'Can I borrow ninety seconds and your next twenty-five years?',
+        'Your neighbors are already saving. Allegedly.',
+        'I can see you through the peephole. Great eye!',
+        'Before you say no, what if you said yes?',
+        'Whoa, I can take a hint! Or can I?'
+      ]
+    },
+    brayden: {
+      intro: 'Hi! I\'m Brayden! I\'m in training!',
+      walk: [
+        'Gary said this house was a sure thing.',
+        'Is the sign... is that for us?',
+        'Do I pitch now? Is it now?',
+        'I memorized the whole script! Mostly!',
+        'My mom says I\'m a natural.',
+        'Gary, wait up!'
+      ],
+      hit: [
+        'Gary didn\'t mention the sprinkler!',
+        'Is this... normal?',
+        'I\'m going to need a new polo.',
+        'This wasn\'t in the training video!'
+      ],
+      ret: [
+        'Gary said to try again.',
+        'Second try! Gary says that\'s where the magic is.',
+        'I\'m not giving up! I don\'t know how!'
+      ],
+      door: [
+        'Hi! Uh. Gary said to say... solar? Solar.',
+        "I'm Brayden. I'm unpaid. Would you like panels?",
+        'Do you have a minute? I have one minute. It\'s my first one.'
+      ]
+    },
+    boss: {
+      walk: [
+        "Gary! THIS is how it's done!",
+        "I'm the Regional Manager. Of the SUN.",
+        'I once closed a deal at a funeral.',
+        "Feel that warmth? That's ROI.",
+        'Always. Be. Shining.'
+      ],
+      hit: [
+        'My costume! It\'s a rental!',
+        "I'm losing pressure!",
+        'Gary, get the pump!',
+        'This is a forty-dollar deposit!'
+      ],
+      ret: [
+        'The sun ALWAYS comes back.',
+        "I've been re-inflated. Let's talk numbers.",
+        'Gary patched me with duct tape. I am unstoppable.'
+      ],
+      door: [
+        "Regional Manager here. Gary's numbers are down, and frankly, that's on YOU.",
+        'Look into my eyes. Well, my sunglasses. Now sign.',
+        'I drove four hours in this costume. Do NOT make me drive back empty.'
+      ]
+    }
+  };
+  const HOP_LINES = ['Not today, sprinkler!', 'Four years of parkour, baby!', 'Saw that coming!', 'Hup!'];
+  const DOG_LINES = [
+    'Nice doggy! Do you like savings?',
+    'Not the ankles! Not the ankles!',
+    'He has a LOT of energy. Ever thought of harnessing it?',
+    'Call him off! I have a quota!'
+  ];
+  const DOG_DONE_LINES = ['Is he... licensed?', 'I can respect a guard dog. Respect.', 'Okay. Where was I? Oh right. Your roof.'];
+  const BLOCK_LINES = ['Ha! Laminated!', 'Weatherproof, baby!', 'Solar AND water resistant!', 'The poster believes in me.'];
+  const BLOW_LINES = [
+    'My hair! That took forty minutes!',
+    "Is that gas-powered? You know what's NOT gas-powered?",
+    'Okay, okay! I felt that in my soul!'
+  ];
+  const GARAGE_LINES = [
+    'Who leaves cans in the driveway?!',
+    'Smart garage? You know what else is smart?',
+    "I'm okay! The recycling is not.",
+    'Is that a can of seltzer in my sock?'
+  ];
+  const FLOOD_LINES = ['My eyes! Is that LED? Very efficient!', "It's two in the afternoon!", 'I see spots. SOLAR spots.', 'Who turned on the... other sun?'];
+  const DRIVE_LINES = ['Shortcut!', 'Driveway. Genius.', "The sprinkler can't get me here!"];
+  const HOA_SAYS = ['Grass: 1/4 inch too tall.', 'Is that gnome approved?', 'Mailbox: wrong blue.', 'Writing this down.'];
+  const GUEST_SOAK = ['Hey! This is linen!', 'My potato salad!', 'Was that on purpose?', 'Not cool, man.'];
+  const GUEST_CHAT = ['Who invited the solar guy?', 'Are those burgers done?', 'Is that the dog\'s hot dog?', 'Great party!'];
+  const FINE_LINES = ['Ooh. Solar would cover that fine.', "That's a lot of fine. You know what's fine? Solar.", 'Yikes. HOA wants solar too, you know.'];
+
+  const CARDS = [
+    { id: 'north', title: '"My roof faces north."', risk: 'low', p: .85, pts: 300,
+      win: 'He deflates like a pool float and drifts back to the curb.',
+      lose: 'He brought a compass. Your roof faces south. He is thrilled.' },
+    { id: 'plant', title: 'Pretend to be a house plant', risk: 'med', p: .6, pts: 200,
+      win: 'He waters you, tucks a brochure in your pot and wanders off confused.',
+      lose: 'He compliments your leaves. You blush. He saw that.' },
+    { id: 'warranty', title: 'Counter-pitch a car warranty', risk: 'low', p: .72, pts: 300,
+      win: 'He panics and buys the extended warranty. He leaves $40 poorer.',
+      lose: 'He already has one. He offers to bundle it with solar.' },
+    { id: 'language', title: 'Speak only in a made-up language', risk: 'med', p: .65, pts: 200,
+      win: 'He nods politely, says "gracias," and backs away slowly.',
+      lose: 'He answers fluently. Somehow. It gets weird.' },
+    { id: 'lemonade', title: 'Lemonade and "Tell me your dreams"', risk: 'high', p: .5, pts: 600, redemption: true,
+      win: 'He cries. He always wanted a different life. He quits on the spot.',
+      lose: 'His dream is to put panels on your roof. He is tearing up about it.' },
+    { id: 'neighbors', title: '"The neighbors LOVE solar."', risk: 'low', p: .75, pts: 250,
+      win: 'He sprints next door. You hear a sprinkler. Then a yelp.',
+      lose: 'The neighbors sent him back with a note: "They love it MORE."' },
+    { id: 'curtain', title: 'Hide behind the curtain', risk: 'high', p: .55, pts: 150,
+      win: 'He knocks, waits, sighs, and leaves a sad little brochure.',
+      lose: 'He saw you. He waves. You wave back. Why did you wave back?' },
+    { id: 'hoa', title: '"The HOA bans panels."', risk: 'med', p: .7, pts: 250, minDay: 4,
+      win: 'He looks over at the HOA president\'s house. He leaves without a word.',
+      lose: 'He pulls out the state solar access law. He has it laminated.' },
+    { id: 'paid', title: '"Are you even getting paid for this?"', risk: 'med', p: .7, pts: 250, minDay: 5,
+      win: 'He is not. He realizes this right now, on your porch. He leaves to rethink his life.',
+      lose: 'He is paid in "experience." He is very proud of it.' },
+    { id: 'burger', title: 'Offer him a burger', risk: 'low', p: .8, pts: 250, minDay: 6,
+      win: 'He eats three burgers and falls asleep in a lawn chair. His ride carries him home.',
+      lose: 'He eats three burgers and THEN pitches you. With mustard on his tie.' },
+    { id: 'rick', title: 'Introduce him to Uncle Rick, who sells timeshares', risk: 'med', p: .7, pts: 300, minDay: 6,
+      win: 'Rick pitches him a timeshare for forty minutes. He flees, shaken.',
+      lose: 'He and Rick hit it off. They are planning a joint venture. On your lawn.' },
+    { id: 'grill', title: 'Put him on grill duty', risk: 'med', p: .65, pts: 200, minDay: 6,
+      win: 'He burns every single burger. He leaves in shame.',
+      lose: 'He is weirdly good at grilling. Your guests love him.' }
+  ];
+  const SIGN = { id: 'sign', title: 'Sign the contract', risk: 'doom' };
+  const RISK_LABEL = { low: 'Safe bet', med: 'Coin flip', high: 'Long shot', doom: 'Do not' };
+
+  // ---------- Pixel art ----------
+  const PAL = {
+    h: '#6b3e1f', s: '#f2c29b', S: '#d99a6c', k: '#1b1b22', w: '#ffffff', t: '#d2373b',
+    l: '#2f6fd6', c: '#8a5a2b', q: '#f4f1e8', p: '#b59a63', P: '#8f7748', b: '#4a2f1c',
+    y: '#e3b36a', Y: '#a8722f', r: '#ff7e9a',
+    g: '#c9c6cf', m: '#8e5bb5', M: '#6a3f8c', n: '#ffb0c8',
+    H: '#f0cf62', v: '#8fd0f0', V: '#6bb3d8', z: '#3fa85a',
+    u: '#e85d75', e: '#6f7d8c'
+  };
+  const G_TOP = [
+    '....hhhh....',
+    '..hhhhhhhh..',
+    '..hhssssshh.',
+    '..ssksskss..',
+    '..ssssssss..',
+    '..swwwwwws..',
+    '...sSSSSs...',
+    '...wwtlww...',
+    '..wwwtwwlw..',
+    '.swwwtwwlccc',
+    '.swwwtwwlcqc',
+    '.s.wwwwwlcqc',
+    '...wwwwwwccc',
+    '..pppppppp..',
+    '..pppPPppp..'
+  ];
+  // Brayden: blond, light-blue polo, green lanyard, no tie
+  const B_TOP = G_TOP.map(r => r.replace(/h/g, 'H').replace(/w/g, 'v').replace(/t/g, 'V').replace(/l/g, 'z'));
+  const LEGS_STAND = ['..ppp..ppp..', '..ppp..ppp..', '..ppp..ppp..', '..bbb..bbb..', '.bbbb..bbbb.'];
+  const LEGS_A = ['..ppp..ppp..', '..ppp..ppp..', '..bbb..ppp..', '.bbbb..ppp..', '......bbbb..'];
+  const LEGS_B = ['..ppp..ppp..', '..ppp..ppp..', '..ppp..bbb..', '..ppp..bbbb.', '..bbbb......'];
+  const LEGS_CROUCH = ['.pppp..pppp.', '.bbbb..bbbb.'];
+  const DOG_BODY = ['......Y..Y', '......YYYY', '......ykyk', 'Y.yyyyyyy.', '.yyyyyyyr.'];
+  const DOG_LEGS_A = ['.y.y..y.y.'];
+  const DOG_LEGS_B = ['..y.y..y.y'];
+  const DOG_SIT = ['..Y..Y', '..YYYY', '..ykyk', '..yyyy', '.yyyy.', 'Yyyyy.', '.y..y.'];
+  const HOA_A = [
+    '...ggg...', '..ggggg..', '..gsssg..', '..sksks..', '..sssss..', '...wnw...',
+    '..mmmmmcc', '.smmMmmcq', '.smmMmmcq', '..mmmmm..', '..mmmmm..', '..mmmmm..',
+    '...s.s...', '..kk.kk..'
+  ];
+  const HOA_B = HOA_A.slice(0, 12).concat(['...s..s..', '..kk..kk.']);
+  const GUEST_A = [
+    '...hhh...', '..hhhhh..', '..sssss..', '..sksks..', '..sssss..',
+    '..uuuuu..', '.suuuuus.', '.suuuuus.', '..uuuuu..', '..eeeee..',
+    '..ss.ss..', '..kk.kk..'
+  ];
+  const GUEST_B = GUEST_A.slice(0, 10).concat(['..s...s..', '.kk...kk.']);
+
+  function drawSprite(c, rows, ox, oy, s, outline, pal) {
+    if (outline) {
+      c.fillStyle = '#1b1b22';
+      for (let y = 0; y < rows.length; y++) for (let x = 0; x < rows[y].length; x++) {
+        if (rows[y][x] === '.') continue;
+        c.fillRect(ox + (x - 1) * s, oy + y * s, s * 3, s);
+        c.fillRect(ox + x * s, oy + (y - 1) * s, s, s * 3);
+      }
+    }
+    for (let y = 0; y < rows.length; y++) for (let x = 0; x < rows[y].length; x++) {
+      const ch = rows[y][x];
+      if (ch === '.') continue;
+      c.fillStyle = (pal && pal[ch]) || PAL[ch];
+      c.fillRect(ox + x * s, oy + y * s, s, s);
+    }
+  }
+  function drawPoster(c, x, y) {
+    c.fillStyle = '#1b1b22'; c.fillRect(x - 1, y - 1, 13, 10);
+    c.fillStyle = '#ffffff'; c.fillRect(x, y, 11, 8);
+    c.fillStyle = '#ffc531'; c.fillRect(x + 1, y + 1, 3, 3);
+    c.fillStyle = '#f08a24'; c.fillRect(x + 2, y + 2, 1, 1);
+    c.fillStyle = '#2f6fd6'; c.fillRect(x + 5, y + 2, 5, 1); c.fillRect(x + 5, y + 4, 4, 1); c.fillRect(x + 1, y + 6, 9, 1);
+  }
+  // Regional Manager: inflatable sun with sunglasses, tie and suit legs. (cx, feetY) at scale k
+  function drawBoss(c, cx, feetY, k, rot, step) {
+    const R = 13 * k, cy = feetY - 7 - R;
+    c.save();
+    c.translate(cx, cy);
+    c.rotate(rot || 0);
+    c.fillStyle = '#f08a24';
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4 + anim * .8;
+      c.save(); c.rotate(a);
+      c.beginPath(); c.moveTo(R - 1, -3 * k); c.lineTo(R + 6 * k, 0); c.lineTo(R - 1, 3 * k); c.closePath(); c.fill();
+      c.restore();
+    }
+    c.fillStyle = '#1b1b22'; c.beginPath(); c.arc(0, 0, R + 1, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ffd23a'; c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ffe680'; c.beginPath(); c.arc(-R * .35, -R * .4, R * .3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#1b1b22';
+    c.fillRect(-R * .7, -R * .3, R * 1.4, Math.max(2, R * .22));
+    c.fillRect(-R * .65, -R * .3, R * .55, Math.max(3, R * .38));
+    c.fillRect(R * .1, -R * .3, R * .55, Math.max(3, R * .38));
+    c.fillRect(-R * .35, R * .35, R * .7, Math.max(1, R * .1));
+    c.fillRect(-R * .45, R * .25, Math.max(1, R * .1), Math.max(1, R * .12));
+    c.fillRect(R * .35, R * .25, Math.max(1, R * .1), Math.max(1, R * .12));
+    c.restore();
+    // tie + legs
+    const lx = Math.round(cx), ly = Math.round(feetY);
+    c.fillStyle = '#1b1b22'; c.fillRect(lx - 2, Math.round(cy + R - 1), 4, 5);
+    c.fillStyle = '#d2373b'; c.fillRect(lx - 1, Math.round(cy + R), 2, 4);
+    c.fillStyle = '#1b1b22';
+    c.fillRect(lx - 5, ly - 7, 4, 7 - (step ? 1 : 0)); c.fillRect(lx + 1, ly - 7, 4, 7 - (step ? 0 : 1));
+    c.fillStyle = '#2b3242';
+    c.fillRect(lx - 4, ly - 7, 2, 5); c.fillRect(lx + 2, ly - 7, 2, 5);
+  }
+
+  let seed = 7;
+  const srand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  const bg = document.createElement('canvas');
+  bg.width = W; bg.height = H;
+  (function drawBg() {
+    const c = bg.getContext('2d');
+    c.fillStyle = '#3a3d47'; c.fillRect(0, 0, W, 9);
+    c.fillStyle = '#f2d14b'; for (let x = 4; x < W; x += 16) c.fillRect(x, 4, 8, 1);
+    c.fillStyle = '#9a9a94'; c.fillRect(0, 9, W, 2);
+    c.fillStyle = '#d9d5cc'; c.fillRect(0, 11, W, 14);
+    c.fillStyle = '#c4bfb3'; for (let x = 0; x < W; x += 20) c.fillRect(x, 11, 1, 14);
+    for (let y = 25, i = 0; y < 196; y += 12, i++) { c.fillStyle = i % 2 ? '#62b04c' : '#57a443'; c.fillRect(0, y, W, 12); }
+    c.fillStyle = '#4a9238';
+    for (let i = 0; i < 160; i++) c.fillRect(Math.floor(srand() * W), 25 + Math.floor(srand() * 170), 1, 2);
+    c.fillStyle = 'rgba(20, 80, 40, .38)';
+    c.beginPath(); c.ellipse(90, 100, 32, 44, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#cfc6b5'; c.fillRect(72, 25, 16, 171);
+    c.fillStyle = '#b3a993';
+    for (let y = 25, i = 0; y < 196; y += 10, i++) { c.fillRect(72, y, 16, 1); c.fillRect(i % 2 ? 80 : 76, y, 1, 10); }
+    c.fillStyle = '#bdb8ae'; c.fillRect(124, 25, 28, 191);
+    c.fillStyle = '#a7a297'; c.fillRect(124, 25, 1, 191); c.fillRect(151, 25, 1, 191);
+    for (let y = 55; y < 214; y += 30) c.fillRect(124, y, 28, 1);
+    c.fillStyle = '#9b958a'; c.fillRect(131, 120, 6, 4); c.fillRect(140, 168, 4, 3);
+    c.fillStyle = '#1b1b22'; c.fillRect(102, 98, 5, 4);
+    c.fillStyle = '#8b94a3'; c.fillRect(103, 99, 3, 2);
+    c.fillStyle = '#6b4a2c'; c.fillRect(57, 31, 2, 10);
+    c.fillStyle = '#1b1b22'; c.fillRect(53, 25, 10, 7);
+    c.fillStyle = '#2f6fd6'; c.fillRect(54, 26, 8, 5);
+    c.fillStyle = '#d2373b'; c.fillRect(62, 24, 1, 4);
+    c.fillStyle = '#6b4a2c'; c.fillRect(103, 36, 2, 10);
+    c.fillStyle = '#1b1b22'; c.fillRect(97, 28, 14, 9);
+    c.fillStyle = '#ffffff'; c.fillRect(98, 29, 12, 7);
+    c.fillStyle = '#d2373b';
+    c.fillRect(101, 30, 6, 1); c.fillRect(101, 34, 6, 1); c.fillRect(100, 31, 1, 3); c.fillRect(107, 31, 1, 3);
+    c.fillRect(102, 31, 1, 1); c.fillRect(103, 32, 2, 1); c.fillRect(105, 33, 1, 1);
+    const bush = (x, y) => { c.fillStyle = '#2f6b2a'; c.fillRect(x, y + 2, 26, 12); c.fillRect(x + 3, y, 20, 16); c.fillStyle = '#3d8436'; c.fillRect(x + 4, y + 2, 8, 5); c.fillRect(x + 14, y + 4, 7, 4); };
+    bush(14, 178);
+    for (let x = 42; x < 52; x += 3) { c.fillStyle = '#ff7eb6'; c.fillRect(x, 188, 2, 2); }
+    for (let x = 109; x < 119; x += 3) { c.fillStyle = '#ffd34d'; c.fillRect(x, 188, 2, 2); }
+    c.fillStyle = '#a9a49a'; c.fillRect(52, 194, 56, 20);
+    c.fillStyle = '#cbc7bf'; c.fillRect(53, 195, 54, 19);
+    c.fillStyle = '#6e4329'; c.fillRect(69, 202, 22, 11);
+    c.fillStyle = '#a06a43'; c.fillRect(70, 203, 20, 9);
+    c.fillStyle = '#6e4329'; for (let x = 72; x < 89; x += 4) c.fillRect(x, 206, 2, 3);
+    c.fillStyle = '#7b3f26'; c.fillRect(0, 214, W, 2);
+    c.fillStyle = '#c96d43'; c.fillRect(0, 216, W, 24);
+    c.fillStyle = '#b55f38'; for (let y = 219; y < H; y += 4) c.fillRect(0, y, W, 1);
+    c.fillStyle = '#f4efe6'; c.fillRect(66, 216, 28, 24);
+    c.fillStyle = '#1f4e8c'; c.fillRect(68, 218, 24, 22);
+    c.fillStyle = '#2b62ad'; c.fillRect(71, 221, 8, 8); c.fillRect(81, 221, 8, 8);
+    c.fillStyle = '#ffc531'; c.fillRect(88, 231, 2, 2);
+    c.fillStyle = '#f4efe6'; c.fillRect(16, 220, 32, 16); c.fillStyle = '#9fd3f0'; c.fillRect(18, 222, 28, 12);
+    c.fillStyle = '#e9d29a'; c.fillRect(18, 222, 7, 12); c.fillRect(39, 222, 7, 12);
+    c.fillStyle = '#f4efe6'; c.fillRect(120, 216, 36, 24);
+  })();
+  function drawGarageDoor(openK) {
+    const x = 122, y = 218, w = 32, h = 22;
+    ctx.fillStyle = '#26272d'; ctx.fillRect(x, y, w, h);
+    if (openK > 0) {
+      ctx.fillStyle = '#3b6fd0'; ctx.fillRect(x + 4, y + h - 9, 7, 9);
+      ctx.fillStyle = '#2b55a6'; ctx.fillRect(x + 4, y + h - 9, 7, 1);
+      ctx.fillStyle = '#5c6270'; ctx.fillRect(x + 20, y + h - 12, 8, 12);
+    }
+    const doorH = Math.round(h * (1 - openK));
+    if (doorH > 0) {
+      ctx.fillStyle = '#ddd8cc'; ctx.fillRect(x, y, w, doorH);
+      ctx.fillStyle = '#c3bdb0';
+      for (let yy = y + 4; yy < y + doorH; yy += 5) ctx.fillRect(x, yy, w, 1);
+      ctx.fillStyle = '#9d978a'; ctx.fillRect(x + w / 2 - 2, y + doorH - 3, 4, 1);
+    }
+  }
+  function drawFloodlight(on) {
+    ctx.fillStyle = '#1b1b22'; ctx.fillRect(97, 217, 9, 6);
+    ctx.fillStyle = on ? '#fffbe0' : '#8b94a3'; ctx.fillRect(98, 218, 7, 4);
+  }
+  function drawBarbecue() {
+    // picnic table with checkered cloth
+    ctx.fillStyle = '#1b1b22'; ctx.fillRect(13, 95, 30, 14);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(14, 96, 28, 9);
+    ctx.fillStyle = '#e04a4a';
+    for (let y = 96; y < 105; y += 3) for (let x = 14 + ((y - 96) / 3 % 2) * 3; x < 42; x += 6) ctx.fillRect(x, y, 3, 3);
+    ctx.fillStyle = '#8a5a2b'; ctx.fillRect(15, 105, 2, 4); ctx.fillRect(39, 105, 2, 4);
+    ctx.fillStyle = '#f4c04a'; ctx.fillRect(20, 98, 4, 2);
+    ctx.fillStyle = '#9be36a'; ctx.fillRect(30, 99, 4, 2);
+    // grill
+    const gx = GRILL.x, gy = GRILL.y;
+    ctx.fillStyle = '#1b1b22'; ctx.fillRect(gx - 6, gy - 12, 12, 8); ctx.fillRect(gx - 5, gy - 4, 1, 4); ctx.fillRect(gx + 4, gy - 4, 1, 4);
+    ctx.fillStyle = '#3a3d47'; ctx.fillRect(gx - 5, gy - 11, 10, 6);
+    ctx.fillStyle = '#ff7a2f'; ctx.fillRect(gx - 4, gy - 12, 8, 1);
+    ctx.fillStyle = '#8a4b2a'; ctx.fillRect(gx - 3, gy - 13, 3, 1); ctx.fillRect(gx + 1, gy - 13, 2, 1);
+  }
+
+  // ---------- Sound ----------
+  let ac = null, soundOn = true;
+  function audio() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+    if (ac && ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, type, vol, slideTo, delay, vib) {
+    if (!soundOn) return;
+    const a = audio(); if (!a) return;
+    const t0 = a.currentTime + (delay || 0);
+    const o = a.createOscillator(), gn = a.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    if (vib) {
+      const lfo = a.createOscillator(), lg = a.createGain();
+      lfo.frequency.value = 6; lg.gain.value = vib;
+      lfo.connect(lg); lg.connect(o.frequency); lfo.start(t0); lfo.stop(t0 + dur);
+    }
+    gn.gain.setValueAtTime(vol || .08, t0);
+    gn.gain.exponentialRampToValueAtTime(.0008, t0 + dur);
+    o.connect(gn); gn.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + .02);
+  }
+  function noise(dur, vol, freq) {
+    if (!soundOn) return;
+    const a = audio(); if (!a) return;
+    const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), gn = a.createGain();
+    f.type = 'bandpass'; f.frequency.value = freq || 2400; f.Q.value = .6;
+    gn.gain.value = vol;
+    src.buffer = buf; src.connect(f); f.connect(gn); gn.connect(a.destination); src.start();
+  }
+  const sfx = {
+    splash: () => noise(.5, .35),
+    boing: () => tone(160, .28, 'sine', .18, 560),
+    hop: () => tone(300, .18, 'square', .05, 900),
+    block: () => { tone(90, .12, 'square', .08); noise(.2, .15, 900); },
+    yip: () => { for (let i = 0; i < 3; i++) tone(1100, .07, 'square', .05, 1600, i * .11); },
+    munch: () => { for (let i = 0; i < 4; i++) tone(180, .05, 'triangle', .12, 120, i * .13); },
+    blower: () => { noise(.8, .3, 600); tone(70, .8, 'sawtooth', .05, 90, 0, 8); },
+    sputter: () => { for (let i = 0; i < 3; i++) tone(80, .08, 'sawtooth', .06, 50, i * .15); },
+    garage: () => { tone(110, .6, 'sawtooth', .04, 140); for (let i = 0; i < 5; i++) tone(900 + i * 140, .05, 'triangle', .07, null, .3 + i * .07); },
+    flood: () => { tone(2400, .05, 'square', .04); noise(.15, .2, 5000); tone(60, .5, 'sine', .15, 40, .02); },
+    hiss: () => { noise(.35, .25, 4000); },
+    deflate: () => { noise(1.6, .3, 3000); tone(700, 1.6, 'sawtooth', .05, 90, 0, 30); },
+    fine: () => { tone(880, .1, 'square', .05); tone(660, .1, 'square', .05, null, .12); tone(440, .25, 'square', .05, null, .24); },
+    ding: () => { tone(1318, .12, 'square', .05); tone(1760, .35, 'square', .05, null, .1); },
+    fanfare: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, .22, 'square', .05, null, i * .14)); tone(1047, .6, 'square', .05, null, .6); },
+    knock: () => { tone(150, .08, 'triangle', .3); tone(140, .08, 'triangle', .3, null, .14); },
+    bwomp: () => tone(220, .35, 'sawtooth', .07, 110),
+    trombone: () => {
+      [392, 370, 349].forEach((f, i) => tone(f, .32, 'sawtooth', .06, null, i * .34));
+      tone(330, 1.0, 'sawtooth', .06, 300, 1.02, 7);
+    },
+    click: () => tone(660, .05, 'square', .04)
+  };
+
+  // ---------- State ----------
+  let day = Math.min(unlocked, LAST_DAY);
+  let phase = 'title', t = 0, anim = 0, score = 0, temptation = 0, hands = 0;
+  let stats, reps = [], doorRep = null, bubbleRep = null;
+  let spr, dog, blower, garage, flood, hoa, guests = [], sandwich = null, flyingPoster = null, particles = [];
+  let bubbleT = 0, chatter = 3, resolved = false, doorTime = 5;
+
+  const KINDS = {
+    gary: { name: 'Gary', hop: true, poster: true, drive: true },
+    brayden: { name: 'Brayden', hop: false, poster: false, drive: true, speed: 10 },
+    boss: { name: 'The Regional Manager', hop: false, poster: false, drive: true, boss: true }
+  };
+  function makeRep(kind, delay) {
+    const K = KINDS[kind];
+    return {
+      kind, K, x: kind === 'brayden' ? 172 : -12, y: 18,
+      mode: delay ? 'wait' : 'enter', timer: delay || 0, returns: delay ? -1 : 0,
+      route: 'path', speed: K.speed || DAYS[day].speed, walk: 0, spin: 0, lift: 0,
+      slipFrom: 0, slipTo: 0, slipT: SLIP, hopFrom: 0, approachHits: 0, chase: null,
+      poster: K.poster && day >= 3, soaked: false, daze: 0, sprayDone: false,
+      hp: K.boss ? BOSS_HP : 0
+    };
+  }
+
+  function reset() {
+    t = 0; score = 0; temptation = 0; hands = 0;
+    stats = { soaks: 0, chases: 0, blasts: 0, trips: 0, flashes: 0, fines: 0, doorWins: 0, doorVisits: 0, hpLeft: BOSS_HP };
+    particles = []; chatter = 3; bubbleT = 0; sandwich = null; flyingPoster = null; doorRep = null; bubbleRep = null;
+    reps = DAYS[day].reps.map(([k, d]) => makeRep(k, d));
+    spr = { cool: 0, spray: 0, any: false };
+    dog = { x: DOG_HOME.x, y: DOG_HOME.y, mode: 'home', timer: 0, cool: 0, flip: false, walk: 0, target: null };
+    blower = { gas: BLOW_GAS, cool: 0, blast: 0 };
+    garage = { cool: 0, open: 0 };
+    flood = { cool: 0, flash: 0 };
+    hoa = { active: false, x: -10, y: 100, next: 6, walk: 0, hit: false, talk: 2, dir: 1 };
+    guests = DAYS[day].guests ? [
+      { hx: 42, hy: 152, shirt: '#e85d75', hair: '#2b1d14' },
+      { hx: 26, hy: 120, shirt: '#4fa3e0', hair: '#c9a24a' },
+      { hx: 106, hy: 128, shirt: '#f2b33a', hair: '#7a4a2a' }
+    ].map(gu => ({ ...gu, x: gu.hx, y: gu.hy, tx: gu.hx, ty: gu.hy, pause: Math.random() * 2, walk: 0, hit: false, wet: 0, talk: 4 + Math.random() * 6 })) : [];
+    $('floats').innerHTML = '';
+    hideBubble();
+    applyDayUi();
+    updateHud();
+  }
+
+  // ---------- HUD + UI ----------
+  const bubble = $('bubble');
+  function addScore(n) { score = Math.max(0, score + n); }
+  function clockText() {
+    const mins = 9 * 60 + Math.floor(Math.min(t, DAY_LEN) / DAY_LEN * 480 / 5) * 5;
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  }
+  function setCharge(btn, hint, charge, text) {
+    const c = phase === 'play' ? charge : 1;
+    btn.style.setProperty('--charge', Math.max(0, Math.min(1, c)).toFixed(3));
+    btn.classList.toggle('cooling', c < 1);
+    hint.textContent = phase !== 'play' ? '—' : text;
+  }
+  function updateHud() {
+    $('dayTag').textContent = DAYS[day].tag;
+    $('clock').textContent = clockText();
+    $('score').textContent = score.toLocaleString();
+    $('meterFill').style.width = temptation + '%';
+    const m = $('meter');
+    m.setAttribute('aria-valuenow', temptation);
+    m.classList.toggle('warn', temptation >= 35 && temptation < 70);
+    m.classList.toggle('hot', temptation >= 70);
+    if (!spr) return;
+    setCharge($('fireBtn'), $('fireHint'), 1 - spr.cool / COOL, spr.cool > 0 ? 'Refilling…' : 'Ready');
+    if (day >= 2) {
+      let txt = 'Ready';
+      if (dog.mode === 'run' || dog.mode === 'chase') txt = 'Chasing!';
+      else if (dog.mode === 'grill') txt = 'Smells meat…';
+      else if (dog.mode === 'eat') txt = 'Eating…';
+      else if (dog.cool > 0) txt = 'Resting…';
+      setCharge($('dogBtn'), $('dogHint'), 1 - dog.cool / DOG_COOL, txt);
+    }
+    if (day >= 3) {
+      const empty = blower.gas <= 0;
+      setCharge($('blowBtn'), $('blowHint'), empty ? 0 : 1 - blower.cool / BLOW_COOL, empty ? `Refill: −${GAS_PRICE}` : `Gas ${blower.gas}/${BLOW_GAS}`);
+    }
+    if (day >= 4) setCharge($('garageBtn'), $('garageHint'), 1 - garage.cool / GARAGE_COOL, garage.cool > 0 ? 'Closing…' : 'Ready');
+    if (day >= 5) setCharge($('floodBtn'), $('floodHint'), 1 - flood.cool / FLOOD_COOL, flood.cool > 0 ? 'Cooling…' : 'Ready');
+  }
+  function applyDayUi() {
+    const shown = [['fireBtn', 1], ['dogBtn', 2], ['blowBtn', 3], ['garageBtn', 4], ['floodBtn', 5]].filter(([id, d]) => { $(id).hidden = day < d; return day >= d; });
+    shown.forEach(([id], i) => $(id).classList.toggle('last-odd', i === shown.length - 1 && shown.length % 2 === 1));
+    const rows = Math.ceil(shown.length / 2);
+    $('cabinet').style.setProperty('--chrome', (230 + (rows - 1) * 66) + 'px');
+  }
+  function say(text, dur, rep) { bubble.textContent = text; bubble.hidden = false; bubbleT = dur || 2.6; bubbleRep = rep || reps[0]; }
+  function hideBubble() { bubble.hidden = true; bubbleT = 0; }
+  function floater(text, x, y, cls) {
+    const el = document.createElement('div');
+    el.className = 'float' + (cls ? ' ' + cls : '');
+    el.textContent = text;
+    el.style.left = Math.max(14, Math.min(86, x / W * 100)) + '%';
+    el.style.top = (Math.max(6, Math.min(H - 20, y)) / H * 100) + '%';
+    $('floats').appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+  }
+  function burst(x, y, n, speed, cols) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = speed * (.4 + Math.random() * .6);
+      particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .5 + Math.random() * .3,
+        col: cols ? cols[Math.floor(Math.random() * cols.length)] : (Math.random() < .7 ? '#6cc6ff' : '#ffffff') });
+    }
+  }
+
+  function drawPortrait(canvas, kind, full) {
+    const c = canvas.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    c.clearRect(0, 0, canvas.width, canvas.height);
+    if (kind === 'boss') {
+      const s = canvas.width / 30;
+      c.save(); c.scale(s, s);
+      drawBoss(c, 15, full ? 42 : 33, full ? .75 : .7, 0, 0);
+      c.restore();
+      return;
+    }
+    const top = kind === 'brayden' ? B_TOP : G_TOP;
+    const sc = full ? 5 : 4;
+    drawSprite(c, full ? top.concat(LEGS_STAND) : top.slice(0, 13), full ? 5 : 4, full ? 5 : 4, sc, true);
+  }
+
+  function setTitle(d) {
+    day = d;
+    const D = DAYS[d];
+    $('titleEyebrow').textContent = `Day ${d} · ${D.name} on Sunny Lane`;
+    const ul = $('howto');
+    ul.innerHTML = '';
+    D.howto.forEach(item => {
+      const li = document.createElement('li');
+      if (typeof item === 'string') li.innerHTML = item;
+      else { li.innerHTML = item.html; li.className = item.cls; }
+      ul.appendChild(li);
+    });
+    $('startBtn').textContent = 'Start ' + D.name;
+    drawPortrait($('titlePortrait'), D.star, true);
+    const pickWrap = $('dayPick');
+    pickWrap.innerHTML = '';
+    pickWrap.hidden = unlocked < 2;
+    for (let i = 1; i <= unlocked; i++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'pick-day-' + i;
+      b.textContent = DAYS[i].tag;
+      b.setAttribute('aria-pressed', String(i === d));
+      b.setAttribute('aria-label', DAYS[i].name);
+      b.addEventListener('click', () => { setTitle(i); $('pick-day-' + i).focus({ preventScroll: true }); });
+      pickWrap.appendChild(b);
+    }
+    reset();
+  }
+
+  // ---------- Targeting ----------
+  const ON_LAWN = ['enter', 'walk', 'stun', 'slip', 'crouch', 'hop', 'porch'];
+  const SOAKABLE = ['walk', 'stun', 'crouch', 'porch'];
+  const onLawn = r => ON_LAWN.includes(r.mode);
+  function leadRep(minY) {
+    let best = null;
+    for (const r of reps) if (onLawn(r) && r.y >= (minY || 0) && (!best || r.y > best.y)) best = r;
+    return best;
+  }
+  const headY = r => r.y - (r.K.boss ? 46 : 30) - (r.lift || 0);
+
+  function comboFloat(r, cls) {
+    if (r.approachHits > 1) floater('Combo x' + r.approachHits, r.x, headY(r) - 14, cls || 'water');
+  }
+  function knockBack(r, dist, dur) {
+    if (r.K.boss) dist *= .5;
+    r.mode = 'slip'; r.slipT = dur || SLIP; r.timer = r.slipT; r.lift = 0;
+    r.slipFrom = r.y; r.slipTo = Math.max(24, r.y - dist);
+  }
+  function hurtBoss(r, n) {
+    if (!r.K.boss || r.mode === 'deflate') return false;
+    r.hp = Math.max(0, r.hp - n);
+    stats.hpLeft = r.hp;
+    sfx.hiss();
+    burst(r.x, r.y - 22, 6, 40, ['#ffffff', '#ffe680']);
+    if (r.hp <= 0) {
+      r.mode = 'deflate'; r.timer = 2.4; r.spin = 0; r.chase = null;
+      if (dog.target === r) dog.mode = 'return';
+      floater('DEFLATED!', r.x, r.y - 50, 'flood');
+      hideBubble();
+      sfx.deflate();
+      return true;
+    }
+    return false;
+  }
+
+  // ---------- Actions ----------
+  function fire() {
+    if (phase !== 'play' || spr.cool > 0) return;
+    spr.cool = COOL; spr.spray = SPRAY; spr.any = false;
+    reps.forEach(r => { r.sprayDone = false; });
+    hoa.hit = false;
+    guests.forEach(gu => { gu.hit = false; });
+    sfx.splash();
+  }
+
+  function sic() {
+    if (phase !== 'play' || day < 2 || dog.cool > 0 || dog.mode !== 'home') return;
+    const target = leadRep();
+    if (!target) { floater('Nobody to chase', 70, 186, 'miss'); return; }
+    dog.cool = DOG_COOL; dog.target = target;
+    sfx.yip();
+    if (day === 6 && Math.random() < .35) {
+      dog.mode = 'grill';
+      floater('Pickles smells the grill…', 60, 186, 'dog');
+      return;
+    }
+    dog.mode = 'run';
+    floater('Get him, Pickles!', DOG_HOME.x, DOG_HOME.y - 18, 'dog');
+  }
+
+  function blow() {
+    if (phase !== 'play' || day < 3 || blower.cool > 0) return;
+    if (blower.gas <= 0) {
+      if (score >= GAS_PRICE) {
+        addScore(-GAS_PRICE); blower.gas = BLOW_GAS; blower.cool = .6;
+        floater('Gas −' + GAS_PRICE, 80, 186, 'leaf');
+        sfx.click();
+      } else { floater('Need ' + GAS_PRICE + ' for gas', 80, 186, 'miss'); sfx.sputter(); }
+      return;
+    }
+    blower.gas--; blower.cool = BLOW_COOL; blower.blast = .55;
+    sfx.blower();
+    const r = leadRep(26);
+    blower.target = r;
+    if (!r) { floater('Blew some leaves', 80, 170, 'miss'); return; }
+    stats.blasts++;
+    r.approachHits++;
+    const midair = r.mode === 'hop';
+    let pts = 100 + 50 * (r.approachHits - 1) + (midair ? 100 : 0);
+    if (r.poster) {
+      r.poster = false;
+      flyingPoster = { x: r.x + 2, y: r.y - 24 - (r.lift || 0), vx: (Math.random() < .5 ? -1 : 1) * 30, vy: -95, spin: 0 };
+      floater('Poster gone!', r.x, headY(r) - 26, 'leaf');
+    }
+    addScore(pts);
+    floater('+' + pts + (midair ? ' mid-air!' : ''), r.x, headY(r), 'leaf');
+    comboFloat(r, 'leaf');
+    if (hurtBoss(r, 2)) return;
+    knockBack(r, midair ? 64 : 50, .7);
+    say(r.K.boss ? pick(L.boss.hit) : pick(BLOW_LINES), 2, r);
+  }
+
+  function slamGarage() {
+    if (phase !== 'play' || day < 4 || garage.cool > 0) return;
+    garage.cool = GARAGE_COOL; garage.open = 1.6;
+    sfx.garage();
+    const hitList = reps.filter(r => r.route === 'drive' && ['walk', 'stun', 'porch'].includes(r.mode) && r.y >= GARAGE_ZONE);
+    if (!hitList.length) { floater('Nobody there', 138, 200, 'miss'); return; }
+    hitList.forEach(r => {
+      stats.trips++;
+      r.approachHits++;
+      const pts = 250 + 50 * (r.approachHits - 1);
+      addScore(pts);
+      burst(r.x, r.y - 6, 14, 70, ['#3b6fd0', '#c9ced8', '#e64b4b', '#f4f1e8']);
+      floater('+' + pts, r.x, headY(r), 'steel');
+      comboFloat(r, 'steel');
+      if (hurtBoss(r, 2)) return;
+      if (r.mode === 'porch') r.x = Math.max(r.x, 110);
+      knockBack(r, r.y - 56, 1.0);
+      say(r.K.boss ? pick(L.boss.hit) : pick(GARAGE_LINES), 2.2, r);
+    });
+  }
+
+  function floodlight() {
+    if (phase !== 'play' || day < 5 || flood.cool > 0) return;
+    flood.cool = FLOOD_COOL; flood.flash = .6;
+    sfx.flood();
+    const hitList = reps.filter(r => onLawn(r) && r.y >= 26);
+    if (!hitList.length) { floater('Nice light. Nobody saw it.', 80, 170, 'miss'); return; }
+    stats.flashes++;
+    hitList.forEach(r => {
+      r.approachHits++;
+      const pts = 75 + 25 * (r.approachHits - 1);
+      addScore(pts);
+      floater('+' + pts, r.x, headY(r), 'flood');
+      if (hurtBoss(r, 1)) return;
+      r.mode = 'stun'; r.timer = DAZE_T; r.daze = DAZE_T; r.lift = 0;
+    });
+    const talker = hitList.find(r => r.mode === 'stun');
+    if (talker) say(pick(FLOOD_LINES), 2, talker);
+  }
+
+  function hitRep(r) {
+    r.sprayDone = true;
+    r.approachHits++; stats.soaks++; r.soaked = true;
+    const pts = (r.K.boss ? 150 : 100) + 50 * (r.approachHits - 1);
+    addScore(pts);
+    floater('+' + pts, r.x, headY(r));
+    comboFloat(r);
+    burst(r.x, r.y - 12, 16, 60);
+    sfx.boing();
+    if (hurtBoss(r, 1)) return;
+    knockBack(r, 34, SLIP);
+    r.speed += r.K.boss ? .3 : .8;
+    say(pick(L[r.kind].hit), 1.8, r);
+  }
+
+  function dogCatch(r) {
+    if (r.kind === 'gary' && Math.random() < .3) {
+      sandwich = { x: dog.x + (dog.flip ? -6 : 6), y: dog.y };
+      dog.mode = 'eat'; dog.timer = 2.4;
+      floater('Sandwich decoy!', r.x, headY(r) - 6, 'miss');
+      say('Good boy. Stay. STAY.', 2, r);
+      sfx.munch();
+      return;
+    }
+    r.approachHits++; stats.chases++;
+    const pts = 150 + 50 * (r.approachHits - 1);
+    addScore(pts);
+    floater('+' + pts, r.x, headY(r), 'dog');
+    comboFloat(r, 'dog');
+    sfx.yip();
+    if (hurtBoss(r, 2)) { dog.mode = 'return'; return; }
+    r.mode = 'chase'; r.chase = { stage: 'run', t: 0, ang: 0 }; r.lift = 0;
+    dog.mode = 'chase';
+    say(r.K.boss ? 'Is that a CHIHUAHUA? I am a SUN!' : pick(DOG_LINES), 2.2, r);
+  }
+
+  function soakBystander(b, isHoa) {
+    b.hit = true;
+    const fine = isHoa ? 300 : 150, temp = isHoa ? 15 : 5;
+    stats.fines++;
+    addScore(-fine);
+    temptation = Math.min(100, temptation + temp);
+    burst(b.x, b.y - 10, 12, 50);
+    floater((isHoa ? 'HOA fine −' : 'Guest soaked −') + fine, b.x, b.y - 34, 'fine');
+    if (isHoa) floater('Temptation +' + temp, b.x, b.y - 20, 'miss');
+    else { floater(pick(GUEST_SOAK), b.x, b.y - 22, 'guest'); b.wet = 3; }
+    sfx.fine();
+    const talker = leadRep();
+    if (talker && isHoa) say(pick(FINE_LINES), 2.4, talker);
+    if (temptation >= 100) setTimeout(() => { if (phase === 'play') endGame('lose', isHoa ? 'hoa' : 'guests'); }, 900);
+  }
+
+  // ---------- Door ----------
+  const doorScreen = $('doorScreen');
+  function openDoor(r) {
+    phase = 'door';
+    doorRep = r;
+    stats.doorVisits++;
+    hideBubble();
+    sfx.knock();
+    hands = 0;
+    drawPortrait($('doorPortrait'), r.kind, false);
+    doorScreen.hidden = false;
+    nextHand();
+  }
+  function nextHand() {
+    hands++;
+    resolved = false;
+    doorTime = 5;
+    $('handNo').textContent = `${doorRep.K.name} · Pitch ${hands}`;
+    $('doorSay').textContent = pick(L[doorRep.kind].door);
+    $('result').hidden = true;
+    const pool = CARDS.filter(c => !c.minDay || day >= c.minDay);
+    const deck = pool.slice().sort(() => Math.random() - .5).slice(0, 3);
+    if (Math.random() < (doorRep.K.boss ? .35 : .25)) deck[Math.floor(Math.random() * 3)] = SIGN;
+    const wrap = $('cards');
+    wrap.innerHTML = '';
+    deck.forEach((card, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'card-' + i;
+      b.className = 'card risk-' + card.risk;
+      const tt = document.createElement('span'); tt.textContent = card.title;
+      const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = RISK_LABEL[card.risk];
+      b.append(tt, chip);
+      b.addEventListener('click', () => playCard(card, b));
+      wrap.appendChild(b);
+    });
+    const first = $('card-0'); if (first) first.focus({ preventScroll: true });
+  }
+  function showResult(text, kind, tag) {
+    const r = $('result');
+    r.className = 'result ' + kind;
+    r.textContent = text;
+    if (tag) { const b = document.createElement('b'); b.textContent = tag; r.appendChild(b); }
+    r.hidden = false;
+  }
+  function lockCards(btn) {
+    document.querySelectorAll('#cards .card').forEach(c => { c.disabled = true; });
+    if (btn) btn.classList.add('picked');
+  }
+  function addTemptation(n) { temptation = Math.min(100, temptation + n); updateHud(); }
+  function afterFail() {
+    setTimeout(() => {
+      if (phase !== 'door') return;
+      if (temptation >= 100) endGame('lose'); else nextHand();
+    }, 2300);
+  }
+  function playCard(card, btn) {
+    if (resolved || phase !== 'door') return;
+    resolved = true;
+    lockCards(btn);
+    if (card.id === 'sign') {
+      temptation = 100; updateHud();
+      showResult(`You signed. ${doorRep.K.boss ? 'The Regional Manager' : doorRep.K.name} does a cartwheel on your lawn.`, 'bad', 'Oh no');
+      sfx.trombone();
+      setTimeout(() => endGame('lose'), 1800);
+      return;
+    }
+    const boss = doorRep.K.boss;
+    if (Math.random() < card.p * (boss ? .8 : 1)) {
+      addScore(card.pts); stats.doorWins++; updateHud();
+      sfx.ding();
+      showResult(card.win, 'good', '+' + card.pts + ' dignity removed');
+      if (card.redemption) { setTimeout(() => endGame('redemption'), 2400); return; }
+      setTimeout(() => {
+        if (phase !== 'door') return;
+        doorScreen.hidden = true;
+        phase = 'play';
+        doorRep.mode = 'fly'; doorRep.spin = 0; doorRep.poster = false;
+        sfx.trombone();
+      }, 2100);
+    } else {
+      const add = boss ? 45 : 35;
+      addTemptation(add);
+      sfx.bwomp();
+      showResult(card.lose, 'bad', 'Temptation +' + add);
+      afterFail();
+    }
+  }
+  function timeout() {
+    resolved = true;
+    lockCards();
+    addTemptation(40);
+    sfx.bwomp();
+    showResult('You froze. They take silence as a "maybe."', 'bad', 'Temptation +40');
+    afterFail();
+  }
+
+  // ---------- End ----------
+  function endGame(kind, cause) {
+    phase = 'over';
+    doorScreen.hidden = true;
+    hideBubble();
+    const D = DAYS[day], won = kind !== 'lose';
+    if (won) unlock(day + 1);
+    let T, eyebrow;
+    const loseText = {
+      hoa: 'The HOA fines piled up and Gary was standing right there with a pen. Your payments start in 30 days and end in 2051.',
+      guests: 'Your soaked guests went home. You were lonely. Gary was there. Your payments start in 30 days and end in 2051.'
+    }[cause] || 'They are already doing cartwheels. Your monthly payment starts in 30 days and ends in the year 2051.';
+    let weekKey = null;
+    if (day === LAST_DAY && won) {
+      weekKey = kind === 'redemption' ? 'redemption' : stats.doorVisits === 0 ? 'secret' : 'standard';
+      foundEnding(weekKey);
+      T = WEEK_ENDINGS[weekKey];
+      eyebrow = 'Sunday · ' + (cause === 'deflate' ? 'Regional Manager deflated' : kind === 'redemption' ? 'Bonus ending' : '5:00 PM') + ' · Week complete';
+    } else {
+      T = kind === 'win' ? D.win : kind === 'redemption' ? D.redemption : ['Congratulations on your 25-year solar lease!', loseText];
+      eyebrow = `${D.name} · ` + (kind === 'win' ? '5:00 PM' : kind === 'redemption' ? 'Bonus ending' : 'Game over');
+    }
+    $('endTitle').textContent = T[0];
+    $('endText').textContent = T[1];
+    $('endEyebrow').textContent = eyebrow;
+    $('contract').hidden = won;
+
+    const rows = [['Dignity removed', score.toLocaleString()], ['Soakings', stats.soaks]];
+    if (day >= 2) rows.push(['Dog chases', stats.chases]);
+    if (day >= 3) rows.push(['Blower blasts', stats.blasts]);
+    if (day >= 4) rows.push(['Recycling trips', stats.trips]);
+    if (day >= 5) rows.push(['Floodlight flashes', stats.flashes]);
+    if (DAYS[day].hoa || DAYS[day].guests) rows.push([DAYS[day].hoa ? 'HOA fines' : 'Guests soaked', stats.fines]);
+    if (DAYS[day].boss) rows.push(['Air left in the sun', Math.round(stats.hpLeft / BOSS_HP * 100) + '%']);
+    rows.push(['Door visits', stats.doorVisits], ['Temptation', temptation + '%']);
+    const dl = $('stats');
+    dl.innerHTML = '';
+    rows.forEach(([k, v]) => {
+      const dt = document.createElement('dt'); dt.textContent = k;
+      const dd = document.createElement('dd'); dd.textContent = v;
+      dl.append(dt, dd);
+    });
+
+    $('bragText').hidden = true;
+    $('bragBtn').textContent = 'Copy brag';
+    const next = DAYS[day + 1];
+    const nextBtn = $('nextBtn'), againBtn = $('againBtn');
+    nextBtn.hidden = !(won && next);
+    if (next) nextBtn.textContent = 'Start ' + next.name;
+    againBtn.textContent = won ? 'Replay ' + D.name : 'Try ' + D.name + ' again';
+    againBtn.classList.toggle('ghost', won && !!next);
+    if (weekKey) {
+      const list = ['standard', 'secret', 'redemption'].map(k => endingsFound.includes(k) ? ENDING_NAMES[k] : '???').join(', ');
+      $('teaser').textContent = `Endings found: ${endingsFound.length} of 3 (${list}).`;
+    } else $('teaser').textContent = won ? (TEASERS[day] || '') : '';
+
+    $('endScreen').hidden = false;
+    if (kind === 'lose') sfx.trombone();
+    else if (weekKey) sfx.fanfare();
+    else { sfx.ding(); setTimeout(sfx.ding, 250); }
+    updateHud();
+    (nextBtn.hidden ? againBtn : nextBtn).focus({ preventScroll: true });
+  }
+  function bragText() {
+    const name = DAYS[day].name;
+    if (temptation >= 100) return `I removed ${score.toLocaleString()} points of dignity from a solar salesman and still signed a 25-year solar lease on ${name}. Your move.`;
+    if (day === LAST_DAY) return `I survived a full week of solar salesmen on Sunny Lane and deflated the Regional Manager. ${score.toLocaleString()} points. Your move.`;
+    return `I removed ${score.toLocaleString()} points of dignity from a solar salesman and survived ${name} on Sunny Lane. Your move.`;
+  }
+
+  // ---------- Loop ----------
+  function moveToward(o, tx, ty, speed, dt) {
+    const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy);
+    if (d < .5) return 0;
+    const step = Math.min(d, speed * dt);
+    o.x += dx / d * step; o.y += dy / d * step;
+    return d - step;
+  }
+
+  function updateDog(dt) {
+    if (day < 2) return;
+    if (dog.cool > 0) dog.cool = Math.max(0, dog.cool - dt * (dog.mode === 'home' ? 1 : .5));
+    const prevX = dog.x, r = dog.target;
+    switch (dog.mode) {
+      case 'run': {
+        if (!r || !onLawn(r)) {
+          const alt = leadRep();
+          if (alt) dog.target = alt; else { dog.mode = 'return'; break; }
+        }
+        const tr = dog.target;
+        const left = moveToward(dog, tr.x, tr.y, 95, dt);
+        dog.walk += dt;
+        if (left < 6 && tr.mode !== 'hop') dogCatch(tr);
+        break;
+      }
+      case 'grill': {
+        const left = moveToward(dog, GRILL.x + 6, GRILL.y, 90, dt);
+        dog.walk += dt;
+        if (left < 1) {
+          dog.mode = 'eat'; dog.timer = 2.4;
+          floater('Pickles stole a hot dog', GRILL.x + 10, GRILL.y - 24, 'dog');
+          sfx.munch();
+        }
+        break;
+      }
+      case 'chase':
+        dog.walk += dt;
+        if (r && r.chase && r.chase.stage === 'run') {
+          if (Math.hypot(r.x - dog.x, r.y - dog.y) > 9) moveToward(dog, r.x, r.y, 66, dt);
+        } else if (r && r.chase) {
+          const rad = r.K.boss ? 22 : 16;
+          dog.x = MAILBOX.x + Math.cos(r.chase.ang - 1.1) * rad;
+          dog.y = MAILBOX.y + 4 + Math.sin(r.chase.ang - 1.1) * rad;
+        } else dog.mode = 'return';
+        break;
+      case 'eat':
+        dog.timer -= dt;
+        if (dog.timer <= 0) { dog.mode = 'return'; sandwich = null; }
+        break;
+      case 'return': {
+        const left = moveToward(dog, DOG_HOME.x, DOG_HOME.y, 70, dt);
+        dog.walk += dt;
+        if (left < 1) { dog.mode = 'home'; dog.x = DOG_HOME.x; dog.y = DOG_HOME.y; dog.target = null; }
+        break;
+      }
+    }
+    if (Math.abs(dog.x - prevX) > .01) dog.flip = dog.x < prevX;
+  }
+
+  function updateHoa(dt) {
+    if (!DAYS[day].hoa) return;
+    if (!hoa.active) {
+      hoa.next -= dt;
+      if (hoa.next <= 0 && t < DAY_LEN - 6) {
+        hoa.active = true; hoa.dir = Math.random() < .5 ? 1 : -1;
+        hoa.x = hoa.dir > 0 ? -10 : 170; hoa.y = 92 + Math.floor(Math.random() * 16);
+        hoa.talk = 1.5;
+      }
+      return;
+    }
+    hoa.x += hoa.dir * 15 * dt; hoa.walk += dt;
+    hoa.talk -= dt;
+    if (hoa.talk <= 0) { floater(pick(HOA_SAYS), hoa.x, hoa.y - 30, 'hoa'); hoa.talk = 3.5; }
+    if (hoa.x < -14 || hoa.x > 174) { hoa.active = false; hoa.next = 9 + Math.random() * 5; }
+  }
+
+  function updateGuests(dt) {
+    for (const gu of guests) {
+      if (gu.wet > 0) gu.wet -= dt;
+      gu.talk -= dt;
+      if (gu.talk <= 0) { floater(pick(GUEST_CHAT), gu.x, gu.y - 28, 'guest'); gu.talk = 8 + Math.random() * 8; }
+      if (gu.pause > 0) { gu.pause -= dt; continue; }
+      const left = moveToward(gu, gu.tx, gu.ty, 6, dt);
+      gu.walk += dt;
+      if (left < .5) {
+        gu.pause = 1 + Math.random() * 2.5;
+        gu.tx = gu.hx + (Math.random() - .5) * 20;
+        gu.ty = gu.hy + (Math.random() - .5) * 16;
+      }
+    }
+    if (day === 6 && Math.random() < dt * 4) particles.push({ x: GRILL.x + (Math.random() - .5) * 6, y: GRILL.y - 14, vx: (Math.random() - .5) * 4, vy: -14, g: -2, life: 1.4, col: Math.random() < .5 ? '#d8d8d8' : '#b9b9b9' });
+  }
+
+  const routeX = r => r.route === 'drive' ? DRIVE_X : PATH_X;
+
+  function arrive(r) {
+    r.mode = 'door';
+    floater('Ding dong!', r.x, headY(r) - 10);
+    openDoor(r);
+  }
+
+  function updateRep(r, dt) {
+    if (r.daze > 0) r.daze -= dt;
+    switch (r.mode) {
+      case 'enter': {
+        const tx = routeX(r);
+        r.x += Math.sign(tx - r.x) * 28 * dt; r.walk += dt;
+        if (Math.abs(r.x - tx) < 1) { r.x = tx; r.mode = 'walk'; }
+        break;
+      }
+      case 'walk': {
+        r.walk += dt;
+        const tx = routeX(r);
+        if (Math.abs(r.x - tx) > 1) { r.x += Math.sign(tx - r.x) * 30 * dt; break; }
+        r.x = tx;
+        const before = r.y;
+        r.y += r.speed * dt;
+        if (r.route === 'path' && r.K.hop && day >= 2 && before < HOP_AT && r.y >= HOP_AT) { r.y = HOP_AT; r.mode = 'crouch'; r.timer = CROUCH_T; break; }
+        if (r.y >= DOOR_Y) {
+          r.y = DOOR_Y;
+          if (r.route === 'drive') r.mode = 'porch';
+          else if (phase === 'play') arrive(r);
+        }
+        break;
+      }
+      case 'porch':
+        r.walk += dt;
+        r.x -= 26 * dt;
+        if (r.x <= 90) { r.x = 90; if (phase === 'play') arrive(r); }
+        break;
+      case 'crouch':
+        r.timer -= dt;
+        if (r.timer <= 0) {
+          r.mode = 'hop'; r.timer = HOP_T; r.hopFrom = r.y;
+          sfx.hop();
+          if (Math.random() < .5 && bubbleT <= 0) say(pick(HOP_LINES), 1.3, r);
+        }
+        break;
+      case 'hop': {
+        r.timer -= dt;
+        const k = Math.min(1, 1 - r.timer / HOP_T);
+        r.y = r.hopFrom + (HOP_TO - r.hopFrom) * k;
+        r.lift = Math.sin(Math.PI * k) * 16;
+        if (r.timer <= 0) { r.lift = 0; r.y = HOP_TO; r.mode = 'walk'; }
+        break;
+      }
+      case 'slip': {
+        r.timer -= dt;
+        const k = 1 - Math.max(0, r.timer) / r.slipT;
+        r.y = r.slipFrom + (r.slipTo - r.slipFrom) * (1 - (1 - k) * (1 - k));
+        if (r.soaked && Math.random() < .3) burst(r.x, r.y - 8, 1, 30);
+        if (r.timer <= 0) { r.mode = 'stun'; r.timer = .45; }
+        break;
+      }
+      case 'stun':
+        r.timer -= dt;
+        if (r.timer <= 0) { r.mode = 'walk'; r.daze = 0; }
+        break;
+      case 'chase': {
+        r.walk += dt * 1.6;
+        const c = r.chase, rad = r.K.boss ? 22 : 16;
+        if (c.stage === 'run') {
+          const left = moveToward(r, MAILBOX.x, MAILBOX.y + 4 + rad, 58, dt);
+          if (left < 1) { c.stage = 'orbit'; c.ang = Math.PI / 2; c.t = 2.6; }
+        } else {
+          c.ang += 4.2 * dt; c.t -= dt;
+          r.x = MAILBOX.x + Math.cos(c.ang) * rad;
+          r.y = MAILBOX.y + 4 + Math.sin(c.ang) * rad;
+          if (c.t <= 0) {
+            r.mode = 'enter'; r.chase = null;
+            if (r.y < 26) r.y = 26;
+            dog.mode = 'return';
+            say(r.K.boss ? 'That dog has a future in sales.' : pick(DOG_DONE_LINES), 2.4, r);
+          }
+        }
+        break;
+      }
+      case 'deflate':
+        r.timer -= dt; r.spin += dt * 10;
+        r.x += Math.sin(anim * 9) * 70 * dt;
+        r.y -= 55 * dt;
+        if (Math.random() < .5) particles.push({ x: r.x, y: r.y - 10, vx: (Math.random() - .5) * 20, vy: 30, g: 0, life: .4, col: '#ffffff' });
+        if (r.timer <= 0 && phase === 'play') endGame('win', 'deflate');
+        break;
+      case 'fly':
+        r.y -= 170 * dt; r.spin += dt * 14;
+        if (r.y < -30) { r.mode = 'wait'; r.timer = 1.4; if (bubbleRep === r) hideBubble(); }
+        break;
+      case 'wait':
+        r.timer -= dt;
+        if (r.timer <= 0) {
+          r.returns++;
+          r.route = r.K.drive && day >= 4 && Math.random() < .5 ? 'drive' : 'path';
+          const fromRight = r.route === 'drive' || (r.kind === 'brayden' ? r.returns % 2 === 0 : r.returns % 2 === 1);
+          r.x = fromRight ? 172 : -12; r.y = 18;
+          r.mode = 'enter'; r.spin = 0; r.approachHits = 0; r.soaked = false;
+          r.poster = r.K.poster && day >= 3;
+          r.speed = (r.K.speed || DAYS[day].speed) + Math.max(0, r.returns) * (r.K.boss ? .6 : 1.3);
+          const lines = L[r.kind];
+          say(r.returns === 0 && lines.intro ? lines.intro : r.route === 'drive' && !r.K.boss ? pick(DRIVE_LINES) : pick(lines.ret), 2.6, r);
+        }
+        break;
+    }
+  }
+
+  function update(dt) {
+    anim += dt;
+    for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g ?? 140) * dt; p.life -= dt; }
+    particles = particles.filter(p => p.life > 0);
+    if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) hideBubble(); }
+    if (flyingPoster) {
+      flyingPoster.x += flyingPoster.vx * dt; flyingPoster.y += flyingPoster.vy * dt; flyingPoster.spin += dt * 9;
+      if (flyingPoster.y < -20) flyingPoster = null;
+    }
+    if (garage.open > 0) garage.open = Math.max(0, garage.open - dt);
+    if (flood.flash > 0) flood.flash = Math.max(0, flood.flash - dt);
+
+    if (phase === 'door' && !resolved) {
+      doorTime -= dt;
+      $('doorTimer').style.width = Math.max(0, doorTime / 5 * 100) + '%';
+      if (doorTime <= 0) timeout();
+    }
+    if (phase !== 'play') return;
+
+    t += dt;
+    if (t >= DAY_LEN) { endGame('win'); return; }
+
+    spr.cool = Math.max(0, spr.cool - dt);
+    blower.cool = Math.max(0, blower.cool - dt);
+    garage.cool = Math.max(0, garage.cool - dt);
+    flood.cool = Math.max(0, flood.cool - dt);
+
+    if (spr.spray > 0) {
+      spr.spray -= dt;
+      for (let i = 0; i < 7; i++) {
+        const a = Math.PI + (Math.random() - .5) * 2.0, sp = 45 + Math.random() * 40;
+        particles.push({ x: 104, y: 98, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 10, life: .45 + Math.random() * .2, col: Math.random() < .75 ? '#6cc6ff' : '#e8f7ff' });
+      }
+      for (const r of reps) {
+        if (r.sprayDone || !inWet(r.x, r.y)) continue;
+        if (SOAKABLE.includes(r.mode)) {
+          spr.any = true;
+          if (r.poster) {
+            r.sprayDone = true;
+            floater('Blocked!', r.x, headY(r) - 10, 'miss');
+            burst(r.x + 8, r.y - 20, 10, 40);
+            sfx.block();
+            say(pick(BLOCK_LINES), 1.6, r);
+          } else hitRep(r);
+        } else if (r.mode === 'hop') {
+          r.sprayDone = true; spr.any = true;
+          floater('Hopped it!', r.x, headY(r) - 10, 'miss');
+        }
+      }
+      if (hoa.active && !hoa.hit && inWet(hoa.x, hoa.y)) { soakBystander(hoa, true); spr.any = true; }
+      for (const gu of guests) if (!gu.hit && inWet(gu.x, gu.y)) { soakBystander(gu, false); spr.any = true; }
+      if (spr.spray <= 0 && !spr.any) floater('Missed', 96, 84, 'miss');
+    }
+
+    if (blower.blast > 0) {
+      blower.blast -= dt;
+      const tx = blower.target && (onLawn(blower.target) || blower.target.mode === 'slip') ? blower.target.x : 80;
+      for (let i = 0; i < 4; i++) {
+        particles.push({ x: 80 + (Math.random() - .5) * 8, y: 196, vx: (tx - 80) * .8 + (Math.random() - .5) * 30, vy: -150 - Math.random() * 60, g: 30,
+          life: .7 + Math.random() * .3, col: ['#9be36a', '#e2a23b', '#c46a2a', '#ffffff'][Math.floor(Math.random() * 4)] });
+      }
+    }
+
+    chatter -= dt;
+    if (chatter <= 0 && bubbleT <= 0) {
+      const walkers = reps.filter(r => r.mode === 'walk');
+      if (walkers.length) { const r = pick(walkers); say(pick(L[r.kind].walk), 2.6, r); }
+      chatter = 5 + Math.random() * 3;
+    }
+
+    for (const r of reps) { updateRep(r, dt); if (phase !== 'play') break; }
+    updateDog(dt);
+    updateHoa(dt);
+    updateGuests(dt);
+    updateHud();
+  }
+
+  // ---------- Render ----------
+  function drawRep(r) {
+    if (r.mode === 'wait' || phase === 'title') return;
+    const moving = ['walk', 'enter', 'chase', 'porch'].includes(r.mode);
+    const step = Math.floor(r.walk * 6) % 2;
+    let angle = 0;
+    if (r.mode === 'slip') angle = Math.sin(anim * 30) * .35;
+    else if (r.mode === 'stun') angle = Math.sin(anim * (r.daze > 0 ? 6 : 12)) * (r.daze > 0 ? .2 : .08);
+    else if (r.mode === 'fly' || r.mode === 'deflate') angle = r.spin;
+    else if (r.mode === 'chase') angle = Math.sin(anim * 20) * .12;
+    else if (r.mode === 'hop') angle = -.15;
+    const rx = Math.round(r.x), ry = Math.round(r.y);
+    if (r.mode !== 'fly' && r.mode !== 'deflate') { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(rx - (r.K.boss ? 9 : 5), ry - 1, r.K.boss ? 18 : 10, 2); }
+
+    if (r.K.boss) {
+      const k = r.mode === 'deflate' ? Math.max(.25, .55 * r.timer / 2.4) : .55 + .45 * r.hp / BOSS_HP;
+      ctx.save();
+      if (r.mode === 'deflate' || r.mode === 'fly' || r.mode === 'slip' || r.mode === 'stun') {
+        ctx.translate(rx, ry - 20); ctx.rotate(angle); ctx.translate(-rx, -(ry - 20));
+      }
+      drawBoss(ctx, rx, ry - (moving && step ? 1 : 0), k, 0, moving ? step : 0);
+      ctx.restore();
+      if (r.mode !== 'deflate' && r.mode !== 'fly') {
+        const bw = 22, top = ry - 7 - 26 * k - 18;
+        ctx.fillStyle = '#1b1b22'; ctx.fillRect(rx - bw / 2 - 1, top - 1, bw + 2, 4);
+        ctx.fillStyle = '#ffd23a'; ctx.fillRect(rx - bw / 2, top, Math.round(bw * r.hp / BOSS_HP), 2);
+      }
+      if (r.daze > 0) drawStars(rx, ry - 7 - 26 * k - 4);
+      return;
+    }
+
+    const top = r.kind === 'brayden' ? B_TOP : G_TOP;
+    const rows = r.mode === 'crouch' ? top.concat(LEGS_CROUCH) : top.concat(moving ? (step ? LEGS_A : LEGS_B) : LEGS_STAND);
+    ctx.save();
+    const crouchDrop = r.mode === 'crouch' ? -3 : 0;
+    ctx.translate(rx, ry - 10 - Math.round(r.lift || 0) - crouchDrop - (moving && step ? 1 : 0));
+    if (angle) ctx.rotate(angle);
+    if (r.mode === 'fly') ctx.scale(.8, .8);
+    drawSprite(ctx, rows, -6, -10, 1, true);
+    if (Math.floor(anim * 3) % 2 || r.mode === 'chase') { ctx.fillStyle = '#9fdcff'; ctx.fillRect(4, -8, 1, 2); if (r.mode === 'chase') ctx.fillRect(-5, -7, 1, 2); }
+    if (r.soaked) { ctx.fillStyle = '#6cc6ff'; ctx.fillRect(-3, -1, 1, 2); ctx.fillRect(1, 1, 1, 2); ctx.fillRect(-1, 3, 1, 1); }
+    if (r.poster) drawPoster(ctx, 5, -6);
+    ctx.restore();
+    if (r.daze > 0) drawStars(rx, ry - 32);
+  }
+  function drawStars(x, y) {
+    for (let i = 0; i < 3; i++) {
+      const a = anim * 5 + i * 2.1;
+      ctx.fillStyle = i % 2 ? '#fff3a6' : '#ffc531';
+      ctx.fillRect(Math.round(x + Math.cos(a) * 7), Math.round(y + Math.sin(a) * 2), 2, 2);
+    }
+  }
+
+  function drawDog() {
+    if (day < 2 || !dog || phase === 'title') return;
+    const dx = Math.round(dog.x), dy = Math.round(dog.y);
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(dx - 4, dy - 1, 8, 2);
+    if (dog.mode === 'home') { drawSprite(ctx, DOG_SIT, dx - 3, dy - 8, 1, true); return; }
+    const step = Math.floor(dog.walk * 10) % 2;
+    const rows = DOG_BODY.concat(dog.mode === 'eat' || step ? DOG_LEGS_A : DOG_LEGS_B);
+    ctx.save();
+    ctx.translate(dx, dy - 6 - (dog.mode === 'eat' ? 0 : step));
+    if (dog.flip) ctx.scale(-1, 1);
+    drawSprite(ctx, rows, -5, 0, 1, true);
+    ctx.restore();
+  }
+  function drawHoa() {
+    if (!DAYS[day].hoa || !hoa.active) return;
+    const hx = Math.round(hoa.x), hy = Math.round(hoa.y);
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(hx - 4, hy - 1, 8, 2);
+    ctx.save();
+    ctx.translate(hx, hy - 14);
+    if (hoa.dir < 0) ctx.scale(-1, 1);
+    drawSprite(ctx, Math.floor(hoa.walk * 5) % 2 ? HOA_A : HOA_B, -4, 0, 1, true);
+    ctx.restore();
+  }
+  function drawGuest(gu) {
+    const gx = Math.round(gu.x), gy = Math.round(gu.y);
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(gx - 4, gy - 1, 8, 2);
+    const moving = gu.pause <= 0;
+    drawSprite(ctx, moving && Math.floor(gu.walk * 5) % 2 ? GUEST_B : GUEST_A, gx - 4, gy - 12, 1, true, { u: gu.shirt, h: gu.hair });
+    if (gu.wet > 0) { ctx.fillStyle = '#6cc6ff'; ctx.fillRect(gx - 2, gy - 6, 1, 2); ctx.fillRect(gx + 2, gy - 4, 1, 2); }
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(bg, 0, 0);
+    drawGarageDoor(garage.open > 0 ? Math.min(1, garage.open * 3, (1.6 - garage.open) * 6) : 0);
+    if (day >= 5) drawFloodlight(flood.flash > 0);
+    if (day === 6) drawBarbecue();
+    if (spr && spr.spray > 0) { ctx.fillStyle = '#c4ccd8'; ctx.fillRect(103, 95, 3, 4); }
+    if (day >= 3 && blower.blast > 0) {
+      ctx.fillStyle = '#1b1b22'; ctx.fillRect(76, 196, 9, 6);
+      ctx.fillStyle = '#e04a2a'; ctx.fillRect(77, 197, 7, 4);
+    }
+    if (sandwich) {
+      const sx = Math.round(sandwich.x), sy = Math.round(sandwich.y);
+      ctx.fillStyle = '#1b1b22'; ctx.fillRect(sx - 3, sy - 4, 7, 5);
+      ctx.fillStyle = '#e8c27a'; ctx.fillRect(sx - 2, sy - 3, 5, 1); ctx.fillRect(sx - 2, sy - 1, 5, 1);
+      ctx.fillStyle = '#5bb04a'; ctx.fillRect(sx - 2, sy - 2, 5, 1);
+    }
+    const list = [];
+    reps.forEach(r => list.push([r.y, () => drawRep(r)]));
+    if (dog) list.push([dog.y, drawDog]);
+    if (hoa) list.push([hoa.y, drawHoa]);
+    guests.forEach(gu => list.push([gu.y, () => drawGuest(gu)]));
+    list.sort((a, b) => a[0] - b[0]).forEach(([, fn]) => fn());
+    if (flyingPoster) {
+      ctx.save();
+      ctx.translate(Math.round(flyingPoster.x), Math.round(flyingPoster.y));
+      ctx.rotate(flyingPoster.spin);
+      drawPoster(ctx, -6, -4);
+      ctx.restore();
+    }
+    for (const p of particles) { ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1); }
+    if (flood.flash > 0) {
+      ctx.fillStyle = `rgba(255, 252, 225, ${Math.min(.85, flood.flash * 1.6)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    if (!bubble.hidden && bubbleRep) {
+      const r = bubbleRep;
+      const hy = r.K.boss ? r.y - 7 - 26 * (.55 + .45 * r.hp / BOSS_HP) - 10 : r.y - 24 - (r.lift || 0);
+      bubble.style.left = Math.max(30, Math.min(70, r.x / W * 100)) + '%';
+      bubble.style.top = Math.max(14, hy / H * 100) + '%';
+    }
+  }
+
+  let last = 0;
+  function loop(ts) {
+    const dt = last ? Math.min(.05, (ts - last) / 1000) : 0;
+    last = ts;
+    update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- Wiring ----------
+  function start(d) {
+    audio();
+    day = d || day;
+    reset();
+    $('titleScreen').hidden = true;
+    $('endScreen').hidden = true;
+    doorScreen.hidden = true;
+    phase = 'play';
+    sfx.click();
+    say(DAYS[day].intro, 2.8, reps[0]);
+  }
+  $('startBtn').addEventListener('click', () => start(day));
+  $('againBtn').addEventListener('click', () => start(day));
+  $('nextBtn').addEventListener('click', () => {
+    $('endScreen').hidden = true;
+    phase = 'title';
+    setTitle(day + 1);
+    $('titleScreen').hidden = false;
+    updateHud();
+    $('startBtn').focus({ preventScroll: true });
+  });
+  function bindGadget(id, fn) {
+    $(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
+    $(id).addEventListener('click', e => { if (e.detail === 0) fn(); });
+  }
+  bindGadget('fireBtn', fire);
+  bindGadget('dogBtn', sic);
+  bindGadget('blowBtn', blow);
+  bindGadget('garageBtn', slamGarage);
+  bindGadget('floodBtn', floodlight);
+  cv.addEventListener('pointerdown', fire);
+  document.addEventListener('keydown', e => {
+    if (phase === 'play') {
+      if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); fire(); }
+      const k = e.key.toLowerCase();
+      if (k === 'd') sic();
+      if (k === 'b') blow();
+      if (k === 'g') slamGarage();
+      if (k === 'f') floodlight();
+    }
+    if (phase === 'door' && ['1', '2', '3'].includes(e.key)) { const b = $('card-' + (Number(e.key) - 1)); if (b) b.click(); }
+  });
+  $('sndBtn').addEventListener('click', () => {
+    soundOn = !soundOn;
+    $('sndBtn').setAttribute('aria-pressed', String(soundOn));
+    $('sndBtn').innerHTML = 'Sound<br>' + (soundOn ? 'on' : 'off');
+    if (soundOn) { audio(); sfx.click(); }
+  });
+  $('bragBtn').addEventListener('click', () => {
+    const text = bragText();
+    const box = $('bragText');
+    const fallback = () => { box.value = text; box.hidden = false; box.focus(); box.select(); $('bragBtn').textContent = 'Select and copy'; };
+    try {
+      navigator.clipboard.writeText(text).then(() => { $('bragBtn').textContent = 'Copied'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  drawPortrait($('doorPortrait'), 'gary', false);
+  setTitle(day);
+  requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
