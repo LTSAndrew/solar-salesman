@@ -12,7 +12,7 @@ A parody arcade game. Gary the door-to-door solar salesman is working your stree
 - Each day adds a new trick for Gary and a new gadget for you: Pickles the chihuahua, the leaf blower, the garage door and the floodlight.
 - Sunday is the boss: the Regional Manager in an inflatable sun costume. There are three week endings to find.
 
-Tap **Menu** (or press Esc) to pause, restart the day, or pick a different day.
+Tap **Menu** (or press Esc) to pause, restart the day, or quit to the title. From the title screen, the menu can start you over from Monday or reset all progress.
 
 Keyboard: Space = sprinkler, D = dog, B = blower, G = garage, F = floodlight, 1–3 = fate cards.
 

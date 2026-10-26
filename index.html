@@ -157,6 +157,8 @@ body {
 .title-screen::before, .title-screen::after, .end-screen::before, .end-screen::after, .pause-screen::before, .pause-screen::after { content: ""; margin-block: auto; }
 .pause-screen { align-items: center; text-align: center; background: rgba(12, 17, 34, .94); }
 .pause-screen h2 { font-family: var(--display); font-weight: 700; font-size: clamp(22px, 7vw, 30px); line-height: 1; margin: 0; color: var(--sun); }
+.stage { container-type: size; }
+@container (max-height: 460px) { .portrait { display: none; } .title-screen h1 { font-size: 24px; } }
 .menu-list { display: flex; flex-direction: column; gap: 10px; width: min(100%, 240px); }
 .title-screen h1 {
   font-family: var(--display);
@@ -359,11 +361,11 @@ body { margin: 0; }
       <p class="eyebrow" id="titleEyebrow">Day 1 · Monday on Sunny Lane</p>
       <h1>Solar Salesman</h1>
       <canvas class="portrait" id="titlePortrait" width="70" height="110" style="width:70px;height:110px"></canvas>
-      <ul class="howto" id="howto"></ul>
+      <div class="day-pick" id="dayPick" aria-label="Choose a day"></div>
       <div class="title-actions">
         <button class="btn" id="startBtn" type="button">Start Monday</button>
       </div>
-      <div class="day-pick" id="dayPick" aria-label="Choose a day"></div>
+      <ul class="howto" id="howto"></ul>
     </section>
 
     <section class="overlay" id="doorScreen" hidden aria-live="polite">
@@ -394,7 +396,7 @@ body { margin: 0; }
         <button class="btn" id="nextBtn" type="button" hidden>Start Tuesday</button>
         <button class="btn" id="againBtn" type="button">Play again</button>
         <button class="btn ghost" id="bragBtn" type="button">Copy brag</button>
-        <button class="btn ghost" id="menuEndBtn" type="button">Choose a day</button>
+        <button class="btn ghost" id="menuEndBtn" type="button">Back to title</button>
       </div>
       <input class="brag" id="bragText" type="text" readonly hidden aria-label="Brag text to copy">
       <p class="teaser" id="teaser"></p>
@@ -406,7 +408,9 @@ body { margin: 0; }
       <div class="menu-list">
         <button class="btn" id="resumeBtn" type="button">Resume</button>
         <button class="btn ghost" id="restartBtn" type="button">Restart Monday</button>
-        <button class="btn ghost" id="titleBtn" type="button">Choose a day</button>
+        <button class="btn ghost" id="titleBtn" type="button">Quit to title</button>
+        <button class="btn ghost" id="newWeekBtn" type="button">Start over from Monday</button>
+        <button class="btn ghost" id="resetBtn" type="button">Reset all progress</button>
         <button class="btn ghost" id="sndBtn" type="button" aria-pressed="true">Sound: on</button>
       </div>
     </section>
@@ -1998,10 +2002,15 @@ body { margin: 0; }
     $('restartBtn').hidden = phase === 'title';
     $('restartBtn').textContent = 'Restart ' + DAYS[day].name;
     $('titleBtn').hidden = phase === 'title';
+    $('newWeekBtn').hidden = phase !== 'title';
+    $('resetBtn').hidden = phase !== 'title' || unlocked < 2 && !endingsFound.length;
+    $('resetBtn').textContent = 'Reset all progress';
+    resetArmed = false;
     $('pauseScreen').hidden = false;
     updateHud();
     $('resumeBtn').focus({ preventScroll: true });
   }
+  let resetArmed = false, resetTimer = null;
   function closeMenu() {
     $('pauseScreen').hidden = true;
     if (pausedFrom) { phase = pausedFrom; pausedFrom = null; }
@@ -2022,6 +2031,23 @@ body { margin: 0; }
   $('resumeBtn').addEventListener('click', closeMenu);
   $('restartBtn').addEventListener('click', () => start(day));
   $('titleBtn').addEventListener('click', goTitle);
+  $('newWeekBtn').addEventListener('click', () => { day = 1; goTitle(); });
+  $('resetBtn').addEventListener('click', () => {
+    const btn = $('resetBtn');
+    if (!resetArmed) {
+      resetArmed = true;
+      btn.textContent = 'Tap again to erase';
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => { resetArmed = false; btn.textContent = 'Reset all progress'; }, 3000);
+      return;
+    }
+    clearTimeout(resetTimer);
+    resetArmed = false;
+    unlocked = 1; endingsFound = [];
+    try { localStorage.removeItem('solar-salesman-unlocked'); localStorage.removeItem('solar-salesman-endings'); } catch (e) {}
+    day = 1;
+    goTitle();
+  });
   $('menuEndBtn').addEventListener('click', goTitle);
   document.addEventListener('visibilitychange', () => { if (document.hidden && (phase === 'play' || phase === 'door')) openMenu(); });
 
